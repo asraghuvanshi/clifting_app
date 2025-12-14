@@ -4,8 +4,10 @@ import 'package:flutter/services.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
   final String email;
+  final String expiresIn;
+  final String resendAfter;
 
-  const OTPVerificationScreen({super.key, required this.email});
+  const OTPVerificationScreen({super.key, required this.email, required this.expiresIn ,required this.resendAfter});
 
   @override
   _OTPVerificationScreenState createState() => _OTPVerificationScreenState();

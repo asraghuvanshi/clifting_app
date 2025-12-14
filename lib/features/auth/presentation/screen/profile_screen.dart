@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:clifting_app/features/auth/data/model/login_model.dart';
-import 'package:clifting_app/features/auth/presentation/auth_provider.dart';
+import 'package:clifting_app/features/auth/presentation/provider/auth_provider.dart';
 import 'package:clifting_app/features/auth/presentation/screen/about_screen.dart';
 import 'package:clifting_app/features/auth/presentation/screen/edit_profile_screen.dart';
 import 'package:clifting_app/features/auth/presentation/screen/setting_screen.dart';
@@ -40,7 +40,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     _startParticleAnimation();
 
     // Load user profile
-    _loadProfile();
   }
 
   void _startParticleAnimation() {
@@ -54,25 +53,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     });
   }
 
-  Future<void> _loadProfile() async {
-    try {
-      final apiService = ref.read(apiServiceProvider);
-      final response = await apiService.get('/user/profile');
 
-      if (response.statusCode == 200) {
-        setState(() {
-          _user = User.fromJson(response.data['data']['user']);
-          _isVerified = _user?.verified ?? false;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      print('Error loading profile: $e');
-    }
-  }
 
   void _navigateToEditProfile() {
     if (_user != null) {
@@ -150,7 +131,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Future<void> _logout() async {
     try {
-      await ref.read(authStateProvider.notifier).logout();
+      // await ref.read(authStateProvider.notifier).logout();
     } catch (e) {
       print('Logout error: $e');
     }
