@@ -35,7 +35,7 @@ class DioInterceptor extends Interceptor {
     
     ApiException apiException;
     if (kDebugMode) {
-      print("eorrsdaf ${err}");
+      print("${err}");
     }
     switch (err.type) {
       case DioExceptionType.connectionTimeout:

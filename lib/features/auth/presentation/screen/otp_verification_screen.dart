@@ -1,19 +1,28 @@
+import 'package:clifting_app/features/auth/presentation/notifier/auth_notifier.dart';
+import 'package:clifting_app/features/auth/presentation/provider/auth_provider.dart';
 import 'package:clifting_app/utility/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class OTPVerificationScreen extends StatefulWidget {
+class OTPVerificationScreen extends ConsumerStatefulWidget {
   final String email;
   final String expiresIn;
   final String resendAfter;
 
-  const OTPVerificationScreen({super.key, required this.email, required this.expiresIn ,required this.resendAfter});
+  const OTPVerificationScreen({
+    super.key,
+    required this.email,
+    required this.expiresIn,
+    required this.resendAfter,
+  });
 
   @override
-  _OTPVerificationScreenState createState() => _OTPVerificationScreenState();
+  ConsumerState<OTPVerificationScreen> createState() =>
+      _OTPVerificationScreenState();
 }
 
-class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
+class _OTPVerificationScreenState extends ConsumerState<OTPVerificationScreen> {
   final List<TextEditingController> _otpControllers = List.generate(
     6,
     (_) => TextEditingController(),
@@ -26,6 +35,8 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   @override
   void initState() {
     super.initState();
+    final resendSeconds = _parseTimeToSeconds(widget.resendAfter);
+    _resendCountdown = resendSeconds;
     _startResendCountdown();
 
     // Set up focus listeners
@@ -38,9 +49,22 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     }
   }
 
+  int _parseTimeToSeconds(String time) {
+    try {
+      final parts = time.split(' ');
+      if (parts.length >= 2) {
+        final value = int.tryParse(parts[0]) ?? 30;
+        return value;
+      }
+      return 30;
+    } catch (e) {
+      return 30;
+    }
+  }
+
   void _startResendCountdown() {
     Future.delayed(const Duration(seconds: 1), () {
-      if (_resendCountdown > 0) {
+      if (mounted && _resendCountdown > 0) {
         setState(() => _resendCountdown--);
         _startResendCountdown();
       }
@@ -54,7 +78,6 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
       _otpFocusNodes[index - 1].requestFocus();
     }
 
-    // Check if all fields are filled
     bool allFilled = _otpControllers.every(
       (controller) => controller.text.isNotEmpty,
     );
@@ -63,34 +86,134 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     }
   }
 
-  void _verifyOTP() {
+  Future<void> _verifyOTP() async {
+    if (!_validateOTP()) {
+      _showErrorDialog('Please enter a valid 6-digit OTP');
+      return;
+    }
+
     HapticFeedback.heavyImpact();
     setState(() => _isVerifying = true);
 
-    // Simulate API call
-    Future.delayed(const Duration(seconds: 2), () {
-      setState(() => _isVerifying = false);
-      // Navigate to reset password screen or show success
-      // Navigator.pushReplacement(...);
-    });
+    final otp = _otpControllers.map((c) => c.text).join();
+
+    try {
+      await ref
+          .read(authProvider.notifier)
+          .verifyResetPasswordOTP(widget.email, otp);
+
+      final state = ref.read(authProvider);
+
+      if (state is VerifyResetPasswordOtpSuccess) {
+        final response = state.response;
+
+        if (response.success) {
+          final resetToken = response.data?.resetToken;
+          final expiresIn = response.data?.expiresIn ?? widget.expiresIn;
+          final message = response.message;
+
+          _showSuccessMessage(message);
+
+          Future.delayed(const Duration(milliseconds: 1500), () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ResetPasswordScreen(
+                  email: widget.email,
+                  resetToken: resetToken ?? '',
+                  expiresIn: expiresIn,
+                ),
+              ),
+            );
+          });
+        } else {
+          _showErrorDialog(response.message);
+        }
+      } else if (state is AuthError) {
+        _showErrorDialog(state.message);
+      }
+    } catch (error) {
+      _showErrorDialog(error.toString());
+    } finally {
+      if (mounted) {
+        setState(() => _isVerifying = false);
+      }
+    }
   }
 
-  void _resendOTP() {
+  bool _validateOTP() {
+    final otp = _otpControllers.map((c) => c.text).join();
+    if (otp.length != 6) return false;
+    return RegExp(r'^\d{6}$').hasMatch(otp);
+  }
+
+  void _resendOTP() async {
     if (_resendCountdown == 0) {
       HapticFeedback.mediumImpact();
-      setState(() {
-        _resendCountdown = 30;
-        // Clear OTP fields
-        for (var controller in _otpControllers) {
-          controller.clear();
-        }
-        _otpFocusNodes[0].requestFocus();
-      });
-      _startResendCountdown();
 
-      // Simulate OTP resend
-      // TODO: Implement OTP resend logic
+      try {
+        await ref.read(authProvider.notifier).forgetPassword(widget.email);
+
+        final state = ref.read(authProvider);
+
+        if (state is ResetPasswordSuccess) {
+          if (state.response.success) {
+            setState(() {
+              _resendCountdown = _parseTimeToSeconds(widget.resendAfter);
+              // Clear OTP fields
+              for (var controller in _otpControllers) {
+                controller.clear();
+              }
+              _otpFocusNodes[0].requestFocus();
+            });
+            _startResendCountdown();
+            _showSuccessMessage('New OTP sent to your email');
+          } else {
+            _showErrorDialog(state.response.message);
+          }
+        } else if (state is AuthError) {
+          _showErrorDialog(state.message);
+        }
+      } catch (error) {
+        _showErrorDialog(error.toString());
+      }
     }
+  }
+
+  void _showSuccessMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(color: Colors.white)),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        surfaceTintColor: Colors.transparent,
+        title: const Text(
+          'Error',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: Text(message, style: const TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'OK',
+              style: TextStyle(color: AppColors.cyberBlue),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -106,6 +229,9 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
+    final isLoading = authState is AuthLoading || _isVerifying;
+
     return Scaffold(
       resizeToAvoidBottomInset: false,
       body: Stack(
@@ -214,7 +340,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: Text(
-                            "The code will expire in 5 minutes. Make sure to enter it before it expires.",
+                            "The code will expire in ${widget.expiresIn}. Make sure to enter it before it expires.",
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.6),
@@ -233,7 +359,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
           ),
 
           // Loading Overlay
-          if (_isVerifying) _buildLoadingOverlay(),
+          if (isLoading) _buildLoadingOverlay(),
         ],
       ),
     );
@@ -432,7 +558,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                   Text(
                     _resendCountdown == 0
                         ? "RESEND CODE"
-                        : "Resend in $_resendCountdown", // ✅ CORRECTED - removed the extra 's'
+                        : "Resend in $_resendCountdown",
                     style: TextStyle(
                       color: _resendCountdown == 0
                           ? AppColors.cyberBlue
@@ -452,16 +578,18 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   }
 
   Widget _buildVerifyButton() {
-    bool isEnabled = _otpControllers.every(
-      (controller) => controller.text.isNotEmpty,
-    );
+    final authState = ref.watch(authProvider);
+    final isLoading = authState is AuthLoading || _isVerifying;
+    bool isEnabled =
+        _otpControllers.every((controller) => controller.text.isNotEmpty) &&
+        !isLoading;
 
     return Container(
       height: 58,
       width: double.infinity,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
-        boxShadow: isEnabled && !_isVerifying
+        boxShadow: isEnabled
             ? [
                 BoxShadow(
                   color: const Color(0xFF00D4FF).withOpacity(0.4),
@@ -482,12 +610,12 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(30),
-          onTap: isEnabled && !_isVerifying ? _verifyOTP : null,
+          onTap: isEnabled ? _verifyOTP : null,
           splashColor: Colors.white.withOpacity(0.3),
           highlightColor: Colors.white.withOpacity(0.2),
           child: Ink(
             decoration: BoxDecoration(
-              gradient: isEnabled && !_isVerifying
+              gradient: isEnabled
                   ? const LinearGradient(
                       colors: [
                         Color(0xFF00D4FF), // Cyan
@@ -506,7 +634,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                     ),
               borderRadius: BorderRadius.circular(30),
               border: Border.all(
-                color: isEnabled && !_isVerifying
+                color: isEnabled
                     ? Colors.white.withOpacity(0.3)
                     : Colors.white.withOpacity(0.1),
                 width: 1,
@@ -515,7 +643,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (_isVerifying)
+                if (isLoading)
                   SizedBox(
                     width: 20,
                     height: 20,
@@ -533,13 +661,13 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                   ),
                 const SizedBox(width: 10),
                 Text(
-                  _isVerifying ? "VERIFYING..." : "VERIFY CODE",
+                  isLoading ? "VERIFYING..." : "VERIFY CODE",
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1.5,
-                    shadows: isEnabled && !_isVerifying
+                    shadows: isEnabled
                         ? const [
                             Shadow(
                               color: Colors.black26,
@@ -565,6 +693,38 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         child: CircularProgressIndicator(
           valueColor: AlwaysStoppedAnimation(AppColors.cyberBlue),
           strokeWidth: 3,
+        ),
+      ),
+    );
+  }
+}
+
+class ResetPasswordScreen extends StatelessWidget {
+  final String email;
+  final String resetToken;
+  final String expiresIn;
+
+  const ResetPasswordScreen({
+    super.key,
+    required this.email,
+    required this.resetToken,
+    required this.expiresIn,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Reset Password')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Email: $email'),
+            Text('Token: ${resetToken.substring(0, 20)}...'),
+            Text('Expires in: $expiresIn'),
+            
+          ],
         ),
       ),
     );

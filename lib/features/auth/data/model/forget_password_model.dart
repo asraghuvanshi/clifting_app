@@ -10,6 +10,20 @@ class ResetPasswordRequest {
   };
 }
 
+class ResetPasswordOTPRequest {
+  final String email;
+  final String otp;
+  ResetPasswordOTPRequest({
+    required this.email,
+    required this.otp
+  });
+
+  Map<String, dynamic> toJson() => {
+    'email': email,
+    'otp': otp
+  };
+}
+
 class ForgotPasswordResponse {
   final bool success;
   final String message;

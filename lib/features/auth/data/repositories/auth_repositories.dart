@@ -3,6 +3,7 @@ import 'package:clifting_app/core/services/storage_service.dart';
 import 'package:clifting_app/features/auth/data/model/forget_password_model.dart';
 import 'package:clifting_app/features/auth/data/model/login_model.dart';
 import 'package:clifting_app/core/exceptions/api_exceptions.dart';
+import 'package:clifting_app/features/auth/data/model/verify_reset_password_otp.dart';
 
 class AuthRepository {
   final AuthService _authService;
@@ -29,6 +30,12 @@ class AuthRepository {
   Future<ForgotPasswordResponse> forgetPassword(String email) async {
     final request = ResetPasswordRequest(email: email);
     final response = await _authService.forgetPassword(request);
+    return response;
+  }
+
+  Future<VerifyResetPasswordOtpResponse> verifyResetPasswordOtp(String email, String otp) async {
+    final request = ResetPasswordOTPRequest(email: email, otp: otp);
+    final response = await _authService.verifyResetOTP(request);
     return response;
   }
 
