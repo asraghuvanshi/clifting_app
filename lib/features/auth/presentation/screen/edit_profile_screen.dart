@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:clifting_app/features/auth/data/model/login_model.dart';
-import 'package:clifting_app/features/auth/presentation/auth_provider.dart';
+import 'package:clifting_app/features/auth/presentation/provider/auth_provider.dart';
 import 'package:clifting_app/utility/colors.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -78,7 +78,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     });
 
     try {
-      final apiService = ref.read(apiServiceProvider);
+      // final apiService = ref.read(apiServiceProvider);
       
       // Prepare form data for image upload
       var formData = FormData();
@@ -92,28 +92,28 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       }
 
       // Prepare user data
-      final updatedUser = User(
-        id: widget.user.id,
-        firstName: _firstNameController.text,
-        lastName: _lastNameController.text,
-        email: _emailController.text,
-        phone: _phoneController.text.isNotEmpty ? _phoneController.text : null,
-        bio: _bioController.text.isNotEmpty ? _bioController.text : null,
-        profession: _professionController.text.isNotEmpty ? _professionController.text : null,
-        education: _educationController.text.isNotEmpty ? _educationController.text : null,
-        city: _cityController.text.isNotEmpty ? _cityController.text : null,
-        country: _countryController.text.isNotEmpty ? _countryController.text : null,
-        lookingFor: _lookingForController.text.isNotEmpty ? _lookingForController.text : null,
-        gender: _gender,
-        dateOfBirth: _dateOfBirth,
-        interests: _interests,
-        verified: widget.user.verified,
-      );
+      // final updatedUser = User(
+      //   id: widget.user.id,
+      //   firstName: _firstNameController.text,
+      //   lastName: _lastNameController.text,
+      //   email: _emailController.text,
+      //   phone: _phoneController.text.isNotEmpty ? _phoneController.text : null,
+      //   bio: _bioController.text.isNotEmpty ? _bioController.text : null,
+      //   profession: _professionController.text.isNotEmpty ? _professionController.text : null,
+      //   education: _educationController.text.isNotEmpty ? _educationController.text : null,
+      //   city: _cityController.text.isNotEmpty ? _cityController.text : null,
+      //   country: _countryController.text.isNotEmpty ? _countryController.text : null,
+      //   lookingFor: _lookingForController.text.isNotEmpty ? _lookingForController.text : null,
+      //   gender: _gender,
+      //   dateOfBirth: _dateOfBirth,
+      //   interests: _interests,
+      //   verified: widget.user.verified,
+      // );
 
       // Add user data to form
-      formData.fields.addAll(updatedUser.toJson().entries.map((e) => 
-        MapEntry(e.key, e.value?.toString() ?? '')
-      ));
+      // formData.fields.addAll(updatedUser.toJson().entries.map((e) => 
+      //   MapEntry(e.key, e.value?.toString() ?? '')
+      // ));
 
       // final response = await apiService.put('/auth/profile', data: formData);
 

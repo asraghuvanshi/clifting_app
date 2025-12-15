@@ -1,29 +1,78 @@
 import 'dart:math' as math;
+import 'package:clifting_app/features/auth/presentation/notifier/auth_notifier.dart';
+import 'package:clifting_app/features/auth/presentation/provider/auth_provider.dart';
+import 'package:clifting_app/features/auth/presentation/screen/home_screen.dart';
 import 'package:clifting_app/features/auth/presentation/screen/login_screen.dart';
 import 'package:clifting_app/utility/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
+
+// We need to override the sharedPreferencesProvider with actual instance
+final sharedPrefsInstanceProvider = Provider<SharedPreferences>((ref) {
+  throw UnimplementedError('SharedPreferences should be overridden in main');
+});
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize SharedPreferences
+  final sharedPreferences = await SharedPreferences.getInstance();
+  
   runApp(
     ProviderScope(
-      child: ClifitingApp(),
+      overrides: [
+        // Override with the actual SharedPreferences instance
+        sharedPrefsInstanceProvider.overrideWithValue(sharedPreferences),
+      ],
+      child: const ClifitingApp(),
     ),
   );
 }
 
-class ClifitingApp extends StatelessWidget {
+class ClifitingApp extends ConsumerWidget {
+  const ClifitingApp({super.key});
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authProvider);
+    
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: ClifitingSplashScreen(),
+      title: 'Clifiting',
       theme: ThemeData(
-        scaffoldBackgroundColor: Color(0xFF0A0A15),
+        scaffoldBackgroundColor: const Color(0xFF0A0A15),
         fontFamily: 'SFPro',
+        primarySwatch: Colors.blue,
+        useMaterial3: true,
       ),
+      home: _buildHome(authState),
     );
+  }
+  
+  Widget _buildHome(AuthState authState) {
+    // During initial app startup, show splash screen
+    if (authState is AuthInitial) {
+      return ClifitingSplashScreen();
+    }
+    
+    // Show loading indicator when auth is in progress
+    if (authState is AuthLoading) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF0A0A15),
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+    
+    if (authState is AuthSuccess) {
+      return const HomeScreen();
+    }
+    
+    return const LoginScreen();
   }
 }
 

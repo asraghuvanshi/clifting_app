@@ -1,4 +1,5 @@
-import 'package:clifting_app/features/auth/presentation/auth_provider.dart';
+import 'package:clifting_app/features/auth/presentation/notifier/auth_notifier.dart';
+import 'package:clifting_app/features/auth/presentation/provider/auth_provider.dart';
 import 'package:clifting_app/features/auth/presentation/screen/forget_password_screen.dart';
 import 'package:clifting_app/features/auth/presentation/screen/home_screen.dart';
 import 'package:clifting_app/features/auth/presentation/screen/signup_screen.dart';
@@ -21,6 +22,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailFocusNode = FocusNode();
   final _passwordFocusNode = FocusNode();
   final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -38,19 +40,48 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
+    setState(() => _isLoading = true);
+
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
-    ref.read(authStateProvider.notifier).login(email, password);
+    try {
+      await ref.read(authProvider.notifier).login(email, password);
+      // Navigation will be handled by auth state change in main.dart
+    } catch (error) {
+      _showErrorDialog(error.toString());
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   void _showErrorDialog(String message) {
+    // Clean up error message
+    String cleanMessage = message;
+
+    // Remove any prefix like "Exception: " or "ApiException: "
+    if (message.contains('Exception: ')) {
+      cleanMessage = message.substring(message.indexOf(': ') + 2);
+    }
+
+    // Handle common error patterns
+    if (message.contains('Invalid credentials') ||
+        message.contains('email or password')) {
+      cleanMessage = 'Invalid email or password. Please try again.';
+    } else if (message.contains('timeout') ||
+        message.contains('connection') ||
+        message.contains('Network')) {
+      cleanMessage = 'Network error. Please check your internet connection.';
+    } else if (message.contains('server')) {
+      cleanMessage = 'Server error. Please try again later.';
+    }
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         backgroundColor: AppColors.midnightBlue.withOpacity(0.95),
         title: Row(
           children: [
@@ -59,18 +90,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
-                  colors: [
-                    Colors.red.withOpacity(0.8),
-                    Colors.transparent,
-                  ],
+                  colors: [Colors.red.withOpacity(0.8), Colors.transparent],
                 ),
               ),
-              child: const Icon(Icons.error_outline,
-                  color: Colors.white, size: 24),
+              child: const Icon(
+                Icons.error_outline,
+                color: Colors.white,
+                size: 24,
+              ),
             ),
             const SizedBox(width: 12),
             const Text(
-              'Error',
+              'Login Failed',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -80,7 +111,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ],
         ),
         content: Text(
-          message,
+          cleanMessage,
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -110,8 +141,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authStateProvider);
-    final isLoading = authState is AuthLoading;
+    ref.listen<AuthState>(authProvider, (previous, next) {
+      if (next is AuthSuccess) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          (route) => false,
+        );
+      }
+    });
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
@@ -178,8 +216,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color:
-                                            AppColors.cyberBlue.withOpacity(0.5),
+                                        color: AppColors.cyberBlue.withOpacity(
+                                          0.5,
+                                        ),
                                         blurRadius: 20,
                                         spreadRadius: 5,
                                       ),
@@ -268,6 +307,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               label: "EMAIL",
                               hint: "Enter your email",
                               icon: Icons.email_outlined,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter your email';
+                                }
+                                if (!value.contains('@')) {
+                                  return 'Please enter a valid email';
+                                }
+                                return null;
+                              },
                             ),
                             const SizedBox(height: 20),
 
@@ -279,6 +327,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               hint: "Enter your password",
                               icon: Icons.lock_outline,
                               isPassword: true,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter your password';
+                                }
+                                if (value.length < 6) {
+                                  return 'Password must be at least 6 characters';
+                                }
+                                return null;
+                              },
                             ),
                             const SizedBox(height: 16),
 
@@ -310,8 +367,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         color: AppColors.cyberBlue,
                                         fontWeight: FontWeight.w600,
                                         decoration: TextDecoration.underline,
-                                        decorationColor:
-                                            AppColors.cyberBlue.withOpacity(0.6),
+                                        decorationColor: AppColors.cyberBlue
+                                            .withOpacity(0.6),
                                       ),
                                     ),
                                   ),
@@ -324,7 +381,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       const SizedBox(height: 40),
 
                       // Login Button
-                      _buildLoginButton(isLoading),
+                      _buildLoginButton(_isLoading),
                       const SizedBox(height: 40),
 
                       // Divider
@@ -365,8 +422,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
             border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
           ),
-          child: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Colors.white, size: 20),
+          child: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Colors.white,
+            size: 20,
+          ),
         ),
       ),
     );
@@ -379,8 +439,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     required String hint,
     required IconData icon,
     bool isPassword = false,
+    String? Function(String?)? validator,
   }) {
     final isFocused = focusNode.hasFocus;
+    String? error;
+
+    if (validator != null) {
+      error = validator(controller.text);
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -391,7 +457,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           child: Text(
             label,
             style: TextStyle(
-              color: AppColors.cyberBlue,
+              color: error != null ? Colors.red : AppColors.cyberBlue,
               fontSize: 12,
               fontWeight: FontWeight.w600,
               letterSpacing: 1,
@@ -424,15 +490,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   end: Alignment.bottomRight,
                 ),
                 border: Border.all(
-                  color: isFocused
+                  color: error != null
+                      ? Colors.red.withOpacity(0.8)
+                      : isFocused
                       ? AppColors.cyberBlue.withOpacity(0.8)
                       : Colors.white.withOpacity(0.15),
                   width: isFocused ? 2 : 1,
                 ),
-                boxShadow: isFocused
+                boxShadow: isFocused || error != null
                     ? [
                         BoxShadow(
-                          color: AppColors.cyberBlue.withOpacity(0.3),
+                          color:
+                              (error != null ? Colors.red : AppColors.cyberBlue)
+                                  .withOpacity(0.3),
                           blurRadius: 20,
                           spreadRadius: 2,
                           offset: const Offset(0, 4),
@@ -459,7 +529,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       gradient: isFocused
                           ? RadialGradient(
                               colors: [
-                                AppColors.cyberBlue.withOpacity(0.3),
+                                (error != null
+                                        ? Colors.red
+                                        : AppColors.cyberBlue)
+                                    .withOpacity(0.3),
                                 Colors.transparent,
                               ],
                             )
@@ -467,7 +540,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     child: Icon(
                       icon,
-                      color: isFocused ? AppColors.cyberBlue : Colors.white70,
+                      color: error != null
+                          ? Colors.red
+                          : isFocused
+                          ? AppColors.cyberBlue
+                          : Colors.white70,
                       size: 20,
                     ),
                   ),
@@ -492,7 +569,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         border: InputBorder.none,
                         isCollapsed: true,
+                        errorText: null,
+                        errorStyle: const TextStyle(height: 0),
                       ),
+                      onChanged: (value) {
+                        if (validator != null && mounted) {
+                          setState(() {});
+                        }
+                      },
                     ),
                   ),
 
@@ -533,6 +617,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
         ),
+
+        // Error message
+        if (error != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 16, top: 4),
+            child: Text(
+              error!,
+              style: const TextStyle(color: Colors.red, fontSize: 12),
+            ),
+          ),
       ],
     );
   }
@@ -552,12 +646,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             gradient: LinearGradient(
               colors: isLoading
                   ? [Colors.grey.shade700, Colors.grey.shade900]
-                  : [
-                      AppColors.cyberBlue,
-                      AppColors.electricGold,
-                    ],
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
+                  : [AppColors.cyberBlue, AppColors.electricGold],
             ),
           ),
           child: Center(
@@ -695,7 +784,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             cursor: SystemMouseCursors.click,
             child: GestureDetector(
               onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => SignupScreen()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SignupScreen()),
+                );
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(
@@ -734,10 +826,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: color.withOpacity(0.3), width: 1.5),
             gradient: LinearGradient(
-              colors: [
-                color.withOpacity(0.1),
-                Colors.transparent,
-              ],
+              colors: [color.withOpacity(0.1), Colors.transparent],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
@@ -753,11 +842,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    icon,
-                    color: color,
-                    size: 22,
-                  ),
+                  Icon(icon, color: color, size: 22),
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(

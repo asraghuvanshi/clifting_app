@@ -1,85 +1,78 @@
+import 'package:clifting_app/core/services/auth_service.dart';
+import 'package:clifting_app/core/services/storage_service.dart';
+import 'package:clifting_app/features/auth/data/model/forget_password_model.dart';
 import 'package:clifting_app/features/auth/data/model/login_model.dart';
-import 'package:clifting_app/utility/local_storage_service/local_storage_service.dart';
-import 'package:clifting_app/utility/network_services/api_services.dart';
+import 'package:clifting_app/core/exceptions/api_exceptions.dart';
+import 'package:clifting_app/features/auth/data/model/verify_reset_password_otp.dart';
 
 class AuthRepository {
-  final ApiService _apiService;
-  final LocalStorageService _localStorage;
+  final AuthService _authService;
+  final StorageService _storageService;
 
-  AuthRepository(this._apiService, this._localStorage);
+  AuthRepository({
+    required AuthService authService,
+    required StorageService storageService,
+  }) : _authService = authService,
+       _storageService = storageService;
 
-  Future<AuthResponse> login(String email, String password) async {
-    try {
-      final response = await _apiService.post(
-        '/auth/login',
-        data: {
-          'email': email,
-          'password': password,
-        },
-      );
+  Future<void> login(String email, String password) async {
+    final request = LoginRequest(email: email, password: password);
+    final response = await _authService.login(request);
 
-      if (response.statusCode == 200) {
-        final authResponse = AuthResponse.fromJson(response.data);
-        
-        // Save tokens and user data
-        await _localStorage.saveAuthData(authResponse.data);
-        _apiService.setAuthToken(authResponse.data.refreshToken);
-        
-        return authResponse;
-      } else {
-        final errorMessage = response.data is Map && response.data.containsKey('message')
-            ? response.data['message']
-            : 'Login Error';
-        throw ApiException(errorMessage, response.statusCode ?? 500);
-      }
-    } catch (e) {
-      rethrow;
-    }
+    // Save tokens and user data
+    await _storageService.saveTokens(
+      response.accessToken,
+      response.refreshToken,
+    );
+    await _storageService.saveUserData(response.user.toJson().toString());
+  }
+
+  Future<ForgotPasswordResponse> forgetPassword(String email) async {
+    final request = ResetPasswordRequest(email: email);
+    final response = await _authService.forgetPassword(request);
+    return response;
+  }
+
+  Future<VerifyResetPasswordOtpResponse> verifyResetPasswordOtp(String email, String otp) async {
+    final request = ResetPasswordOTPRequest(email: email, otp: otp);
+    final response = await _authService.verifyResetOTP(request);
+    return response;
   }
 
   Future<void> logout() async {
-    try {
-      await _apiService.post('/auth/logout');
-    } catch (e) {
-      //  logout API fails
-    } finally {
-      await _localStorage.clearAuthData();
-      _apiService.clearAuthToken();
-    }
+    await _authService.logout();
+    await _storageService.clearAll();
   }
 
-  Future<AuthResponse> refreshToken() async {
+  Future<User> validateToken() async {
     try {
-      final refreshToken = await _localStorage.getRefreshToken();
-      if (refreshToken == null) {
-        throw UnauthorizedException('No refresh token available');
-      }
-
-      final response = await _apiService.post(
-        '/auth/refresh-token',
-        data: {'refresh_token': refreshToken},
-      );
-
-      final authResponse = AuthResponse.fromJson(response.data);
-      
-      // Update tokens
-      await _localStorage.saveAuthData(authResponse.data);
-      _apiService.setAuthToken(authResponse.data.refreshToken);
-      
-      return authResponse;
-    } catch (e) {
-      await _localStorage.clearAuthData();
-      _apiService.clearAuthToken();
+      return await _authService.validateToken();
+    } on UnauthorizedException {
+      await _storageService.clearAll();
       rethrow;
     }
   }
 
-  Future<bool> isAuthenticated() async {
-    final token = await _localStorage.getAccessToken();
+  Future<bool> isLoggedIn() async {
+    final token = _storageService.getAccessToken();
     return token != null && token.isNotEmpty;
   }
 
-  Future<User?> getCurrentUser() async {
-    return await _localStorage.getUser();
+  Future<void> refreshAuthToken() async {
+    final refreshToken = _storageService.getRefreshToken();
+    if (refreshToken == null) {
+      throw const UnauthorizedException();
+    }
+
+    try {
+      final response = await _authService.refreshToken(refreshToken);
+      await _storageService.saveTokens(
+        response.accessToken,
+        response.refreshToken,
+      );
+    } on UnauthorizedException {
+      await _storageService.clearAll();
+      rethrow;
+    }
   }
 }
