@@ -1,5 +1,5 @@
 abstract class ApiConstants {
-  static const String baseUrl = 'http://10.172.185.191:8080/api';
+  static const String baseUrl = 'http://10.232.148.191:8080/api';
   static const String login = '/auth/login';
   static const String refreshToken = '/auth/refresh';
   static const String logout = '/auth/logout';

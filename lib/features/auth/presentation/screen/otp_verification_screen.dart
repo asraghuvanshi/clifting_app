@@ -1,5 +1,6 @@
 import 'package:clifting_app/features/auth/presentation/notifier/auth_notifier.dart';
 import 'package:clifting_app/features/auth/presentation/provider/auth_provider.dart';
+import 'package:clifting_app/features/auth/presentation/screen/change_password.dart';
 import 'package:clifting_app/utility/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -120,8 +121,7 @@ class _OTPVerificationScreenState extends ConsumerState<OTPVerificationScreen> {
               MaterialPageRoute(
                 builder: (context) => ResetPasswordScreen(
                   email: widget.email,
-                  resetToken: resetToken ?? '',
-                  expiresIn: expiresIn,
+                  token: resetToken ?? '',
                 ),
               ),
             );
@@ -693,38 +693,6 @@ class _OTPVerificationScreenState extends ConsumerState<OTPVerificationScreen> {
         child: CircularProgressIndicator(
           valueColor: AlwaysStoppedAnimation(AppColors.cyberBlue),
           strokeWidth: 3,
-        ),
-      ),
-    );
-  }
-}
-
-class ResetPasswordScreen extends StatelessWidget {
-  final String email;
-  final String resetToken;
-  final String expiresIn;
-
-  const ResetPasswordScreen({
-    super.key,
-    required this.email,
-    required this.resetToken,
-    required this.expiresIn,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Reset Password')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Email: $email'),
-            Text('Token: ${resetToken.substring(0, 20)}...'),
-            Text('Expires in: $expiresIn'),
-            
-          ],
         ),
       ),
     );
