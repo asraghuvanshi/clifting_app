@@ -1,4 +1,6 @@
 // lib/features/auth/data/models/auth_models.dart
+import 'package:clifting_app/features/auth/data/model/verify_reset_password_otp.dart';
+
 class LoginRequest {
   final String email;
   final String password;
@@ -11,6 +13,22 @@ class LoginRequest {
   Map<String, dynamic> toJson() => {
     'email': email,
     'password': password,
+  };
+}
+
+
+class ChangePasswordRequest {
+  final String token;
+  final String password;
+
+  ChangePasswordRequest({
+    required this.token,
+    required this.password,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'reset_token': token,
+    'new_password': password,
   };
 }
 

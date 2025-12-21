@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'package:clifting_app/features/auth/data/model/login_model.dart';
+import 'package:clifting_app/features/auth/data/model/user_model.dart';
+import 'package:clifting_app/features/auth/presentation/notifier/auth_notifier.dart';
 import 'package:clifting_app/features/auth/presentation/provider/auth_provider.dart';
 import 'package:clifting_app/features/auth/presentation/screen/about_screen.dart';
 import 'package:clifting_app/features/auth/presentation/screen/edit_profile_screen.dart';
@@ -18,31 +19,63 @@ class ProfileScreen extends ConsumerStatefulWidget {
   ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+class _ProfileScreenState extends ConsumerState<ProfileScreen>
+    with WidgetsBindingObserver {
   final List<_Particle> _particles = [];
   final math.Random _random = math.Random();
   Timer? _particleTimer;
+  final GlobalKey _refreshIndicatorKey = GlobalKey();
 
-  User? _user;
+  UserResponse? _user;
   bool _isLoading = true;
   bool _isVerified = false;
+
+  // Store screen dimensions
+  late double _screenWidth;
+  late double _screenHeight;
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
-    // Initialize particles - increased count and size
-    for (int i = 0; i < 12; i++) {
-      _particles.add(_Particle(_random));
+    // Initialize after the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _initializeParticles();
+        _isInitialized = true;
+        _startParticleAnimation();
+        // Load user profile AFTER the widget tree is built
+        _loadUserProfile();
+      }
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final mediaQuery = MediaQuery.of(context);
+    _screenWidth = mediaQuery.size.width;
+    _screenHeight = mediaQuery.size.height;
+  }
+
+  void _initializeParticles() {
+    _particles.clear();
+    for (int i = 0; i < 25; i++) {
+      _particles.add(
+        _Particle(
+          random: _random,
+          screenWidth: _screenWidth,
+          screenHeight: _screenHeight,
+        ),
+      );
     }
-
-    // Start particle animation
-    _startParticleAnimation();
-
-    // Load user profile
+    if (mounted) setState(() {});
   }
 
   void _startParticleAnimation() {
+    _particleTimer?.cancel();
     _particleTimer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
       if (mounted) {
         for (final particle in _particles) {
@@ -53,7 +86,50 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     });
   }
 
+  @override
+  void dispose() {
+    _particleTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
+  @override
+  void didUpdateWidget(covariant ProfileScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reinitialize particles when screen size changes
+    if (_isInitialized) {
+      _initializeParticles();
+    }
+  }
+
+  Future<void> _loadUserProfile() async {
+    if (!mounted) return;
+
+    setState(() => _isLoading = true);
+    try {
+      // Use Future.delayed to ensure we're not in build phase
+      await Future.delayed(Duration.zero, () async {
+        await ref.read(authProvider.notifier).getUserProfile();
+      });
+    } catch (e) {
+      print('Error loading profile: $e');
+      if (mounted) {
+        _showErrorSnackbar('Failed to load profile');
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
 
   void _navigateToEditProfile() {
     if (_user != null) {
@@ -65,6 +141,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             onProfileUpdated: (updatedUser) {
               setState(() {
                 _user = updatedUser;
+                _isVerified = _user?.verified ?? false;
               });
             },
           ),
@@ -91,8 +168,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         title: Row(
           children: [
             Icon(Icons.logout, color: Colors.red, size: 24),
-            SizedBox(width: 12),
-            Text(
+            const SizedBox(width: 12),
+            const Text(
               'Logout',
               style: TextStyle(
                 color: Colors.white,
@@ -102,21 +179,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
           ],
         ),
-        content: Text(
+        content: const Text(
           'Are you sure you want to logout?',
           style: TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel', style: TextStyle(color: Colors.white70)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white70),
+            ),
           ),
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
               _logout();
             },
-            child: Text(
+            child: const Text(
               'Logout',
               style: TextStyle(
                 color: AppColors.cyberBlue,
@@ -140,33 +220,46 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void _navigateToSettings() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => SettingsScreen()),
+      MaterialPageRoute(builder: (context) => const SettingsScreen()),
     );
   }
 
-void _navigateToWebView(String title, String type) {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => WebViewScreen(
-        title: title,
-        type: type,
+  void _navigateToWebView(String title, String type) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WebViewScreen(title: title, type: type),
       ),
-    ),
-  );
-}
-
-  @override
-  void dispose() {
-    _particleTimer?.cancel();
-    super.dispose();
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    // Watch auth state for changes
+    final authState = ref.watch(authProvider);
+
+    // Use Future.microtask to handle state updates after build
+    Future.microtask(() {
+      if (authState is UserProfileSuccess) {
+        final response = authState.response;
+        if (response.data != null && mounted) {
+          setState(() {
+            _user = response.data;
+            _isVerified = _user?.verified ?? false;
+            _isLoading = false;
+          });
+        }
+      } else if (authState is AuthError && _isLoading && mounted) {
+        setState(() => _isLoading = false);
+        if (!authState.message.contains('initial')) {
+          _showErrorSnackbar(authState.message);
+        }
+      }
+    });
+
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [
               Color(0xFF0A0A0A),
@@ -179,39 +272,41 @@ void _navigateToWebView(String title, String type) {
         ),
         child: Stack(
           children: [
-            // Particle effects around profile image - made bigger
-            ..._particles.map((particle) {
-              final opacity = particle.opacity.clamp(0.0, 0.7);
-              return Positioned(
-                left: particle.x,
-                top: particle.y,
-                child: Opacity(
-                  opacity: opacity,
-                  child: Container(
-                    width: particle.size,
-                    height: particle.size,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          Colors.white.withOpacity(0.9),
-                          AppColors.cyberBlue.withOpacity(0.6),
-                          Colors.transparent,
-                        ],
-                        stops: [0.1, 0.5, 1.0],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.cyberBlue.withOpacity(opacity * 0.5),
-                          blurRadius: particle.size * 0.8,
-                          spreadRadius: 1,
+            // Attractive particle effects
+            if (_isInitialized)
+              ..._particles.map((particle) {
+                return Positioned(
+                  left: particle.x,
+                  top: particle.y,
+                  child: Transform.rotate(
+                    angle: particle.rotation,
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 300),
+                      opacity: particle.opacity,
+                      child: Container(
+                        width: particle.size,
+                        height: particle.size,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            colors: particle.colors,
+                            stops: const [0.1, 0.5, 1.0],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: particle.glowColor.withOpacity(
+                                particle.opacity * 0.6,
+                              ),
+                              blurRadius: particle.size * 1.5,
+                              spreadRadius: 1,
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
-              );
-            }).toList(),
+                );
+              }).toList(),
 
             SafeArea(
               child: Column(
@@ -220,27 +315,33 @@ void _navigateToWebView(String title, String type) {
                   _buildAppBar(),
 
                   Expanded(
-                    child: SingleChildScrollView(
-                      physics: BouncingScrollPhysics(),
-                      child: Column(
-                        children: [
-                          SizedBox(height: 20),
+                    child: RefreshIndicator(
+                      key: _refreshIndicatorKey,
+                      color: AppColors.cyberBlue,
+                      backgroundColor: Colors.black,
+                      onRefresh: _loadUserProfile,
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 20),
 
-                          // Profile Header with Particle Effects
-                          _buildProfileHeader(),
+                            // Profile Header with Particle Effects
+                            _buildProfileHeader(),
 
-                          SizedBox(height: 30),
+                            const SizedBox(height: 30),
 
-                          // Quick Stats
-                          _buildQuickStats(),
+                            // Quick Stats
+                            _buildQuickStats(),
 
-                          SizedBox(height: 30),
+                            const SizedBox(height: 30),
 
-                          // Main Menu Options
-                          _buildMainMenuOptions(),
+                            // Main Menu Options
+                            _buildMainMenuOptions(),
 
-                          SizedBox(height: 40),
-                        ],
+                            const SizedBox(height: 40),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -251,11 +352,24 @@ void _navigateToWebView(String title, String type) {
             // Loading Overlay
             if (_isLoading)
               Container(
-                color: Colors.black.withOpacity(0.7),
+                color: Colors.black.withOpacity(0.85),
                 child: Center(
-                  child: CircularProgressIndicator(
-                    color: AppColors.cyberBlue,
-                    strokeWidth: 3,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const CircularProgressIndicator(
+                        color: AppColors.cyberBlue,
+                        strokeWidth: 3,
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Loading Profile...',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -267,12 +381,12 @@ void _navigateToWebView(String title, String type) {
 
   Widget _buildAppBar() {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Empty space for alignment (no back button in bottom nav)
-          Container(width: 44),
+          // Empty space for alignment
+          const SizedBox(width: 44),
 
           // Title
           Text(
@@ -290,41 +404,60 @@ void _navigateToWebView(String title, String type) {
             ),
           ),
 
-          // Edit Profile Button (Changed from Edit mode toggle)
+          // Edit Profile Button
           MouseRegion(
             cursor: SystemMouseCursors.click,
             child: GestureDetector(
-              onTap: _navigateToEditProfile,
+              onTap: _user != null ? _navigateToEditProfile : null,
               child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   gradient: LinearGradient(
                     colors: [
-                      AppColors.cyberBlue.withOpacity(0.4),
-                      AppColors.electricGold.withOpacity(0.2),
+                      AppColors.cyberBlue.withOpacity(
+                        _user != null ? 0.4 : 0.2,
+                      ),
+                      AppColors.electricGold.withOpacity(
+                        _user != null ? 0.2 : 0.1,
+                      ),
                     ],
                   ),
                   border: Border.all(
-                    color: AppColors.cyberBlue.withOpacity(0.6),
+                    color: AppColors.cyberBlue.withOpacity(
+                      _user != null ? 0.6 : 0.3,
+                    ),
                     width: 1.5,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.cyberBlue.withOpacity(0.3),
+                      color: AppColors.cyberBlue.withOpacity(
+                        _user != null ? 0.3 : 0.1,
+                      ),
                       blurRadius: 8,
-                      offset: Offset(0, 2),
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.edit, color: Colors.white, size: 16),
-                    SizedBox(width: 6),
+                    Icon(
+                      Icons.edit,
+                      color: _user != null
+                          ? Colors.white
+                          : Colors.white.withOpacity(0.5),
+                      size: 16,
+                    ),
+                    const SizedBox(width: 6),
                     Text(
                       'Edit',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: _user != null
+                            ? Colors.white
+                            : Colors.white.withOpacity(0.5),
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -342,35 +475,39 @@ void _navigateToWebView(String title, String type) {
   Widget _buildProfileHeader() {
     final fullName = _user != null
         ? '${_user!.firstName} ${_user!.lastName}'.trim()
-        : 'User Name';
+        : 'Loading...';
 
-    final profession = _user?.profession ?? 'Software Engineer';
+    final profession = _user?.profession ?? 'Profession';
     final city = _user?.city ?? '';
     final country = _user?.country ?? '';
     final hasLocation = city.isNotEmpty || country.isNotEmpty;
+    final age = _user?.age != null ? '${_user!.age} years' : '';
 
     return Column(
       children: [
-        // Profile Picture with Particle Effects
+        // Profile Picture with Glow Effect
         Stack(
           alignment: Alignment.center,
           children: [
-            // Outer Glow Effect
-            Container(
-              width: 140,
-              height: 140,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    AppColors.cyberBlue.withOpacity(0.4),
-                    AppColors.electricGold.withOpacity(0.3),
-                    Colors.transparent,
-                  ],
-                  stops: [0.1, 0.6, 1.0],
+            // Animated Glow Rings
+            for (int i = 0; i < 3; i++)
+              AnimatedContainer(
+                duration: Duration(seconds: 2 + i),
+                curve: Curves.easeInOut,
+                width: 140 + (i * 20),
+                height: 140 + (i * 20),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      AppColors.cyberBlue.withOpacity(0.1 * (3 - i)),
+                      AppColors.electricGold.withOpacity(0.05 * (3 - i)),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.1, 0.5, 1.0],
+                  ),
                 ),
               ),
-            ),
 
             // Profile Picture Container
             Container(
@@ -378,7 +515,7 @@ void _navigateToWebView(String title, String type) {
               height: 120,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(
+                gradient: const LinearGradient(
                   colors: [AppColors.electricGold, AppColors.cyberBlue],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -401,24 +538,57 @@ void _navigateToWebView(String title, String type) {
                 ),
               ),
               child: Center(
-                child: Text(
-                  fullName.isNotEmpty ? fullName[0] : 'U',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 46,
-                    fontWeight: FontWeight.bold,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black.withOpacity(0.5),
-                        blurRadius: 10,
+                child:
+                    _user?.profileImage != null &&
+                        _user!.profileImage!.isNotEmpty
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(60),
+                        child: Image.network(
+                          _user!.profileImage!,
+                          width: 116,
+                          height: 116,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: CircularProgressIndicator(
+                                value:
+                                    loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                          loadingProgress.expectedTotalBytes!
+                                    : null,
+                                color: AppColors.cyberBlue,
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return Text(
+                              fullName.isNotEmpty
+                                  ? fullName[0].toUpperCase()
+                                  : 'U',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 46,
+                                fontWeight: FontWeight.bold,
+                                shadows: [
+                                  Shadow(color: Colors.black, blurRadius: 10),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      )
+                    : Text(
+                        fullName.isNotEmpty ? fullName[0].toUpperCase() : 'U',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 46,
+                          fontWeight: FontWeight.bold,
+                          shadows: [
+                            Shadow(color: Colors.black, blurRadius: 10),
+                          ],
+                        ),
                       ),
-                      Shadow(
-                        color: AppColors.cyberBlue.withOpacity(0.3),
-                        blurRadius: 20,
-                      ),
-                    ],
-                  ),
-                ),
               ),
             ),
 
@@ -428,10 +598,10 @@ void _navigateToWebView(String title, String type) {
                 bottom: 0,
                 right: 0,
                 child: Container(
-                  padding: EdgeInsets.all(6),
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: LinearGradient(
+                    gradient: const LinearGradient(
                       colors: [Colors.green, Colors.lightGreen],
                     ),
                     border: Border.all(color: Colors.white, width: 2),
@@ -443,82 +613,118 @@ void _navigateToWebView(String title, String type) {
                       ),
                     ],
                   ),
-                  child: Icon(Icons.verified, color: Colors.white, size: 18),
+                  child: const Icon(
+                    Icons.verified,
+                    color: Colors.white,
+                    size: 18,
+                  ),
                 ),
               ),
           ],
         ),
 
-        SizedBox(height: 20),
+        const SizedBox(height: 20),
 
-        // Name and Profession
+        // Name and Information
         Column(
           children: [
             Text(
               fullName,
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 26,
                 fontWeight: FontWeight.bold,
-                shadows: [
-                  Shadow(
-                    color: AppColors.cyberBlue.withOpacity(0.3),
-                    blurRadius: 10,
-                  ),
-                ],
+                shadows: [Shadow(color: Colors.black, blurRadius: 10)],
               ),
+              textAlign: TextAlign.center,
             ),
 
-            SizedBox(height: 6),
+            const SizedBox(height: 8),
 
-            Text(
-              profession,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.9),
-                fontSize: 15,
-                fontWeight: FontWeight.w400,
-                letterSpacing: 0.5,
-              ),
-            ),
-
-            SizedBox(height: 10),
-
-            // Location
-            if (hasLocation)
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.white.withOpacity(0.1),
-                      Colors.white.withOpacity(0.05),
-                    ],
-                  ),
-                  border: Border.all(color: Colors.white.withOpacity(0.2)),
+            if (profession.isNotEmpty)
+              Text(
+                profession,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: 0.5,
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.location_on_outlined,
-                      color: AppColors.cyberBlue,
-                      size: 16,
-                    ),
-                    SizedBox(width: 6),
-                    Text(
-                      city.isNotEmpty && country.isNotEmpty
+              ),
+
+            const SizedBox(height: 4),
+
+            if (age.isNotEmpty)
+              Text(
+                age,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.7),
+                  fontSize: 14,
+                ),
+              ),
+
+            const SizedBox(height: 12),
+
+            // Location and Info Row
+            if (hasLocation || (_user?.interests?.isNotEmpty ?? false))
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                alignment: WrapAlignment.center,
+                children: [
+                  if (hasLocation)
+                    _buildInfoChip(
+                      icon: Icons.location_on_outlined,
+                      text: city.isNotEmpty && country.isNotEmpty
                           ? '$city, $country'
                           : city.isNotEmpty
                           ? city
                           : country,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      color: AppColors.cyberBlue,
                     ),
-                  ],
+
+                  if (_user?.gender?.isNotEmpty ?? false)
+                    _buildInfoChip(
+                      icon: Icons.person_outline,
+                      text: _user!.gender!,
+                      color: AppColors.electricGold,
+                    ),
+
+                  if (_user?.lookingFor?.isNotEmpty ?? false)
+                    _buildInfoChip(
+                      icon: Icons.search,
+                      text: _user!.lookingFor!,
+                      color: Colors.purpleAccent,
+                    ),
+                ],
+              ),
+
+            // Interests
+            if (_user?.interests?.isNotEmpty ?? false)
+              Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  children: _user!.interests!.take(5).map((interest) {
+                    return Chip(
+                      label: Text(
+                        interest,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                        ),
+                      ),
+                      backgroundColor: Colors.white.withOpacity(0.1),
+                      side: BorderSide(
+                        color: AppColors.cyberBlue.withOpacity(0.3),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    );
+                  }).toList(),
                 ),
               ),
           ],
@@ -527,10 +733,47 @@ void _navigateToWebView(String title, String type) {
     );
   }
 
-  Widget _buildQuickStats() {
+  Widget _buildInfoChip({
+    required IconData icon,
+    required String text,
+    required Color color,
+  }) {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 20),
-      padding: EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          colors: [color.withOpacity(0.2), color.withOpacity(0.1)],
+        ),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 14),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.9),
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickStats() {
+    final likesReceived = _user?.likesReceived ?? 0;
+    final profileViews = _user?.profileViews ?? 0;
+    final matchesCount = _user?.matchesCount ?? 0;
+    final unreadCount = _user?.unreadCount ?? 0;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
@@ -546,7 +789,7 @@ void _navigateToWebView(String title, String type) {
           BoxShadow(
             color: Colors.black.withOpacity(0.5),
             blurRadius: 15,
-            offset: Offset(0, 6),
+            offset: const Offset(0, 6),
           ),
           BoxShadow(
             color: AppColors.cyberBlue.withOpacity(0.1),
@@ -558,10 +801,26 @@ void _navigateToWebView(String title, String type) {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildStatItem('Posts', '12', Icons.post_add_outlined),
-          _buildStatItem('Friends', '24', Icons.people_outline),
-          _buildStatItem('Likes', '156', Icons.favorite_outline),
-          _buildStatItem('Following', '45', Icons.person_add_outlined),
+          _buildStatItem(
+            'Likes',
+            likesReceived.toString(),
+            Icons.favorite_outline,
+          ),
+          _buildStatItem(
+            'Views',
+            profileViews.toString(),
+            Icons.visibility_outlined,
+          ),
+          _buildStatItem(
+            'Matches',
+            matchesCount.toString(),
+            Icons.people_outline,
+          ),
+          _buildStatItem(
+            'Unread',
+            unreadCount.toString(),
+            Icons.message_outlined,
+          ),
         ],
       ),
     );
@@ -571,7 +830,7 @@ void _navigateToWebView(String title, String type) {
     return Column(
       children: [
         Container(
-          padding: EdgeInsets.all(10),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: RadialGradient(
@@ -583,16 +842,16 @@ void _navigateToWebView(String title, String type) {
           ),
           child: Icon(icon, color: AppColors.cyberBlue, size: 22),
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Text(
           value,
-          style: TextStyle(
+          style: const TextStyle(
             color: Colors.white,
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
         ),
-        SizedBox(height: 4),
+        const SizedBox(height: 4),
         Text(
           title,
           style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12),
@@ -617,34 +876,34 @@ void _navigateToWebView(String title, String type) {
         color: Colors.blueAccent,
         onTap: _navigateToSettings,
       ),
-     _MenuItem(
-  icon: Icons.privacy_tip_outlined,
-  title: 'Privacy Policy',
-  subtitle: 'Read our privacy policy',
-  color: Colors.greenAccent,
-  onTap: () => _navigateToWebView('Privacy Policy', 'privacy'),
-),
-_MenuItem(
-  icon: Icons.description_outlined,
-  title: 'Terms & Conditions',
-  subtitle: 'Read terms & conditions',
-  color: Colors.orangeAccent,
-  onTap: () => _navigateToWebView('Terms & Conditions', 'terms'),
-),
-_MenuItem(
-  icon: Icons.help_outline,
-  title: 'Help & Support',
-  subtitle: 'Get help & support',
-  color: Colors.purpleAccent,
-  onTap: () => _navigateToWebView('Help & Support', 'help'),
-),
-_MenuItem(
-  icon: Icons.info_outline,
-  title: 'About Us',
-  subtitle: 'Learn about Clifting',
-  color: Colors.blueAccent,
-  onTap: () => _navigateToWebView('About Clifting', 'about'),
-),
+      _MenuItem(
+        icon: Icons.privacy_tip_outlined,
+        title: 'Privacy Policy',
+        subtitle: 'Read our privacy policy',
+        color: Colors.greenAccent,
+        onTap: () => _navigateToWebView('Privacy Policy', 'privacy'),
+      ),
+      _MenuItem(
+        icon: Icons.description_outlined,
+        title: 'Terms & Conditions',
+        subtitle: 'Read terms & conditions',
+        color: Colors.orangeAccent,
+        onTap: () => _navigateToWebView('Terms & Conditions', 'terms'),
+      ),
+      _MenuItem(
+        icon: Icons.help_outline,
+        title: 'Help & Support',
+        subtitle: 'Get help & support',
+        color: Colors.purpleAccent,
+        onTap: () => _navigateToWebView('Help & Support', 'help'),
+      ),
+      _MenuItem(
+        icon: Icons.info_outline,
+        title: 'About Us',
+        subtitle: 'Learn about Clifting',
+        color: Colors.blueAccent,
+        onTap: () => _navigateToWebView('About Clifting', 'about'),
+      ),
       _MenuItem(
         icon: Icons.logout,
         title: 'Logout',
@@ -654,15 +913,13 @@ _MenuItem(
       ),
     ];
 
-    // Option 1: With Padding wrapper (Recommended for cleanest look)
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          const SizedBox(height: 16.0), // Top leading space
+          const SizedBox(height: 16.0),
           ...menuItems.map((item) => _buildMenuItem(item)).toList(),
-          const SizedBox(height: 16.0), // Bottom trailing space
+          const SizedBox(height: 16.0),
         ],
       ),
     );
@@ -677,8 +934,8 @@ _MenuItem(
           item.onTap();
         },
         child: Container(
-          margin: EdgeInsets.only(bottom: 12),
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             gradient: LinearGradient(
@@ -694,14 +951,14 @@ _MenuItem(
               BoxShadow(
                 color: item.color.withOpacity(0.1),
                 blurRadius: 8,
-                offset: Offset(0, 3),
+                offset: const Offset(0, 3),
               ),
             ],
           ),
           child: Row(
             children: [
               Container(
-                padding: EdgeInsets.all(8),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
@@ -710,21 +967,21 @@ _MenuItem(
                 ),
                 child: Icon(item.icon, color: Colors.white, size: 22),
               ),
-              SizedBox(width: 16),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       item.title,
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 0.3,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
                       item.subtitle,
                       style: TextStyle(
@@ -750,6 +1007,9 @@ _MenuItem(
 
 class _Particle {
   final math.Random random;
+  final double screenWidth;
+  final double screenHeight;
+
   double x;
   double y;
   double size;
@@ -758,55 +1018,98 @@ class _Particle {
   double direction;
   double velocityX;
   double velocityY;
+  double rotation;
+  double rotationSpeed;
+  List<Color> colors;
+  Color glowColor;
 
-  _Particle(this.random)
-    : x = 0,
-      y = 0,
-      size = 0,
-      speed = 0,
-      opacity = 0,
-      direction = 0,
-      velocityX = 0,
-      velocityY = 0 {
+  _Particle({
+    required this.random,
+    required this.screenWidth,
+    required this.screenHeight,
+  }) : x = 0,
+       y = 0,
+       size = 0,
+       speed = 0,
+       opacity = 0,
+       direction = 0,
+       velocityX = 0,
+       velocityY = 0,
+       rotation = 0,
+       rotationSpeed = 0,
+       colors = [],
+       glowColor = Colors.transparent {
     reset();
   }
 
   void reset() {
-    // Position particles around center - adjusted for bigger profile image
-    final angle = random.nextDouble() * math.pi * 2;
-    final distance = 70 + random.nextDouble() * 50;
-    x = 160 + math.cos(angle) * distance;
-    y = 160 + math.sin(angle) * distance;
+    // Random starting position across screen
+    x = random.nextDouble() * screenWidth;
+    y = random.nextDouble() * screenHeight * 0.6;
 
-    // Increased particle size significantly
-    size = random.nextDouble() * 8 + 4;
-    speed = random.nextDouble() * 0.6 + 0.3;
-    opacity = random.nextDouble() * 0.5 + 0.3;
+    // Varied particle sizes (small to medium)
+    size = random.nextDouble() * 6 + 3;
+
+    // Varied speeds
+    speed = random.nextDouble() * 0.8 + 0.2;
+
+    // Random direction
     direction = random.nextDouble() * math.pi * 2;
     velocityX = math.cos(direction) * speed;
     velocityY = math.sin(direction) * speed;
+
+    // Random opacity with fade in/out effect
+    opacity = random.nextDouble() * 0.4 + 0.3;
+
+    // Rotation effects
+    rotation = random.nextDouble() * math.pi * 2;
+    rotationSpeed = (random.nextDouble() - 0.5) * 0.02;
+
+    // Color variations
+    final colorOptions = [
+      [Colors.white, AppColors.cyberBlue.withOpacity(0.6), Colors.transparent],
+      [
+        Colors.white,
+        AppColors.electricGold.withOpacity(0.6),
+        Colors.transparent,
+      ],
+      [Colors.white, Colors.purpleAccent.withOpacity(0.6), Colors.transparent],
+      [Colors.white, Colors.blueAccent.withOpacity(0.6), Colors.transparent],
+    ];
+    colors = colorOptions[random.nextInt(colorOptions.length)];
+    glowColor = colors[1];
   }
 
   void update() {
+    // Move particle
     x += velocityX;
     y += velocityY;
 
-    // Gentle curve movement
-    direction += (random.nextDouble() - 0.5) * 0.08;
+    // Add slight random movement
+    direction += (random.nextDouble() - 0.5) * 0.05;
     velocityX = math.cos(direction) * speed;
     velocityY = math.sin(direction) * speed;
 
-    // Reset if goes too far
-    final dx = x - 160;
-    final dy = y - 160;
-    final distance = math.sqrt(dx * dx + dy * dy);
-    if (distance > 140) {
-      reset();
+    // Rotation
+    rotation += rotationSpeed;
+
+    // Pulsing opacity
+    final time = DateTime.now().millisecondsSinceEpoch / 1000;
+    opacity = 0.3 + (math.sin(time * 0.5 + x * 0.01) * 0.4).abs();
+
+    // Bounce off edges
+    if (x < 0 || x > screenWidth) {
+      velocityX = -velocityX;
+      direction = math.atan2(velocityY, velocityX);
+    }
+    if (y < 0 || y > screenHeight * 0.6) {
+      velocityY = -velocityY;
+      direction = math.atan2(velocityY, velocityX);
     }
 
-    // Gentle pulsing opacity
-    final time = DateTime.now().millisecondsSinceEpoch / 1000;
-    opacity = 0.3 + (math.sin(time * 0.3 + x * 0.01) * 0.3).abs();
+    if (x < -50 || x > screenWidth + 50 || y < -50 || y > screenHeight + 50) {
+      reset();
+    }
   }
 }
 
