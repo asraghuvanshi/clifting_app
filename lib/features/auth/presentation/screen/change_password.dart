@@ -1,5 +1,6 @@
 import 'package:clifting_app/features/auth/presentation/notifier/auth_notifier.dart';
 import 'package:clifting_app/features/auth/presentation/provider/auth_provider.dart';
+import 'package:clifting_app/features/auth/presentation/screen/login_screen.dart';
 import 'package:clifting_app/utility/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,7 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 class ResetPasswordScreen extends ConsumerStatefulWidget {
   final String email;
   final String token;
-  
+
   const ResetPasswordScreen({
     super.key,
     required this.email,
@@ -16,7 +17,8 @@ class ResetPasswordScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
+  ConsumerState<ResetPasswordScreen> createState() =>
+      _ResetPasswordScreenState();
 }
 
 class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
@@ -24,7 +26,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   final _confirmPasswordController = TextEditingController();
   final _newPasswordFocusNode = FocusNode();
   final _confirmPasswordFocusNode = FocusNode();
-  
+
   bool _obscureNewPassword = true;
   bool _obscureConfirmPassword = true;
   bool _passwordStrengthVisible = false;
@@ -39,7 +41,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     super.initState();
     _newPasswordFocusNode.addListener(_onFocusChange);
     _confirmPasswordFocusNode.addListener(_onFocusChange);
-    
+
     // Listen to password changes to calculate strength
     _newPasswordController.addListener(_updatePasswordStrength);
   }
@@ -60,21 +62,22 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
     setState(() {
       _passwordStrengthVisible = true;
-      
+
       double strength = 0.0;
-      
+
       // Length check
       if (password.length >= 8) strength += 0.25;
-      
+
       // Uppercase check
       if (password.contains(RegExp(r'[A-Z]'))) strength += 0.25;
-      
+
       // Lowercase check
       if (password.contains(RegExp(r'[a-z]'))) strength += 0.25;
-      
+
       // Number/Special character check
-      if (password.contains(RegExp(r'[0-9!@#$%^&*(),.?":{}|<>]'))) strength += 0.25;
-      
+      if (password.contains(RegExp(r'[0-9!@#$%^&*(),.?":{}|<>]')))
+        strength += 0.25;
+
       _passwordStrength = strength;
     });
   }
@@ -92,7 +95,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
   bool _validatePassword() {
     final password = _newPasswordController.text;
-    
+
     if (password.isEmpty) {
       setState(() {
         _showPasswordError = true;
@@ -100,7 +103,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       });
       return false;
     }
-    
+
     if (password.length < 8) {
       setState(() {
         _showPasswordError = true;
@@ -108,7 +111,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       });
       return false;
     }
-    
+
     if (!password.contains(RegExp(r'[A-Z]'))) {
       setState(() {
         _showPasswordError = true;
@@ -116,7 +119,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       });
       return false;
     }
-    
+
     if (!password.contains(RegExp(r'[a-z]'))) {
       setState(() {
         _showPasswordError = true;
@@ -124,7 +127,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       });
       return false;
     }
-    
+
     if (!password.contains(RegExp(r'[0-9!@#$%^&*(),.?":{}|<>]'))) {
       setState(() {
         _showPasswordError = true;
@@ -132,7 +135,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       });
       return false;
     }
-    
+
     setState(() {
       _showPasswordError = false;
       _passwordErrorText = '';
@@ -142,7 +145,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
   bool _validateConfirmPassword() {
     final confirmPassword = _confirmPasswordController.text;
-    
+
     if (confirmPassword.isEmpty) {
       setState(() {
         _showConfirmPasswordError = true;
@@ -150,7 +153,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       });
       return false;
     }
-    
+
     if (confirmPassword != _newPasswordController.text) {
       setState(() {
         _showConfirmPasswordError = true;
@@ -158,7 +161,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       });
       return false;
     }
-    
+
     setState(() {
       _showConfirmPasswordError = false;
       _confirmPasswordErrorText = '';
@@ -195,23 +198,24 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     }
 
     try {
-      // await ref.read(authProvider.notifier).resetPassword(
-      //   email: widget.email,
-      //   token: widget.token,
-      //   newPassword: newPassword,
-      // );
+      await ref
+          .read(authProvider.notifier)
+          .changePassword(widget.token, newPassword);
 
       final state = ref.read(authProvider);
 
-      if (state is ResetPasswordSuccess) {
+      if (state is ChangePasswordSuccess) {
         final response = state.response;
 
         if (response.success) {
           _showSuccessMessage(response.message);
-          
+
           Future.delayed(const Duration(milliseconds: 2000), () {
-            // Navigate back to login or success screen
-            Navigator.popUntil(context, (route) => route.isFirst);
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => LoginScreen()),
+              (route) => false,
+            );
           });
         } else {
           _showErrorDialog(response.message);
@@ -232,10 +236,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
             const Icon(Icons.check_circle, color: Colors.white, size: 20),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(color: Colors.white),
-              ),
+              child: Text(message, style: const TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -259,7 +260,10 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
             SizedBox(width: 10),
             Text(
               'Error',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),
@@ -269,7 +273,10 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
             onPressed: () => Navigator.pop(context),
             child: const Text(
               'TRY AGAIN',
-              style: TextStyle(color: AppColors.cyberBlue, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: AppColors.cyberBlue,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -391,7 +398,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                         // New Password Field
                         _buildNewPasswordField(isLoading),
                         const SizedBox(height: 8),
-                        
+
                         // Password Error Text
                         if (_showPasswordError)
                           Padding(
@@ -409,12 +416,13 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                         // Password Strength Indicator
                         if (_passwordStrengthVisible)
                           _buildPasswordStrengthIndicator(),
-                        if (_passwordStrengthVisible) const SizedBox(height: 20),
+                        if (_passwordStrengthVisible)
+                          const SizedBox(height: 20),
 
                         // Confirm Password Field
                         _buildConfirmPasswordField(isLoading),
                         const SizedBox(height: 8),
-                        
+
                         // Confirm Password Error Text
                         if (_showConfirmPasswordError)
                           Padding(
@@ -524,9 +532,11 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
             color: _showPasswordError
                 ? Colors.red
                 : _newPasswordFocusNode.hasFocus
-                    ? AppColors.cyberBlue
-                    : Colors.white.withOpacity(0.15),
-            width: _newPasswordFocusNode.hasFocus || _showPasswordError ? 2.0 : 1.0,
+                ? AppColors.cyberBlue
+                : Colors.white.withOpacity(0.15),
+            width: _newPasswordFocusNode.hasFocus || _showPasswordError
+                ? 2.0
+                : 1.0,
           ),
           gradient: LinearGradient(
             colors: _newPasswordFocusNode.hasFocus
@@ -548,20 +558,20 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                   ),
                 ]
               : _showPasswordError
-                  ? [
-                      BoxShadow(
-                        color: Colors.red.withOpacity(0.2),
-                        blurRadius: 15,
-                        spreadRadius: 1,
-                      ),
-                    ]
-                  : [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        spreadRadius: 1,
-                      ),
-                    ],
+              ? [
+                  BoxShadow(
+                    color: Colors.red.withOpacity(0.2),
+                    blurRadius: 15,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    spreadRadius: 1,
+                  ),
+                ],
         ),
         child: Row(
           children: [
@@ -578,15 +588,17 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                         ],
                       )
                     : null,
-                color: _newPasswordFocusNode.hasFocus ? null : Colors.transparent,
+                color: _newPasswordFocusNode.hasFocus
+                    ? null
+                    : Colors.transparent,
               ),
               child: Icon(
                 Icons.lock_outline_rounded,
                 color: _showPasswordError
                     ? Colors.red
                     : _newPasswordFocusNode.hasFocus
-                        ? AppColors.cyberBlue
-                        : Colors.white.withOpacity(0.7),
+                    ? AppColors.cyberBlue
+                    : Colors.white.withOpacity(0.7),
                 size: 22,
               ),
             ),
@@ -665,9 +677,12 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
             color: _showConfirmPasswordError
                 ? Colors.red
                 : _confirmPasswordFocusNode.hasFocus
-                    ? AppColors.cyberBlue
-                    : Colors.white.withOpacity(0.15),
-            width: _confirmPasswordFocusNode.hasFocus || _showConfirmPasswordError ? 2.0 : 1.0,
+                ? AppColors.cyberBlue
+                : Colors.white.withOpacity(0.15),
+            width:
+                _confirmPasswordFocusNode.hasFocus || _showConfirmPasswordError
+                ? 2.0
+                : 1.0,
           ),
           gradient: LinearGradient(
             colors: _confirmPasswordFocusNode.hasFocus
@@ -689,20 +704,20 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                   ),
                 ]
               : _showConfirmPasswordError
-                  ? [
-                      BoxShadow(
-                        color: Colors.red.withOpacity(0.2),
-                        blurRadius: 15,
-                        spreadRadius: 1,
-                      ),
-                    ]
-                  : [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        spreadRadius: 1,
-                      ),
-                    ],
+              ? [
+                  BoxShadow(
+                    color: Colors.red.withOpacity(0.2),
+                    blurRadius: 15,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    spreadRadius: 1,
+                  ),
+                ],
         ),
         child: Row(
           children: [
@@ -719,15 +734,17 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                         ],
                       )
                     : null,
-                color: _confirmPasswordFocusNode.hasFocus ? null : Colors.transparent,
+                color: _confirmPasswordFocusNode.hasFocus
+                    ? null
+                    : Colors.transparent,
               ),
               child: Icon(
                 Icons.lock_reset_rounded,
                 color: _showConfirmPasswordError
                     ? Colors.red
                     : _confirmPasswordFocusNode.hasFocus
-                        ? AppColors.cyberBlue
-                        : Colors.white.withOpacity(0.7),
+                    ? AppColors.cyberBlue
+                    : Colors.white.withOpacity(0.7),
                 size: 22,
               ),
             ),
@@ -912,7 +929,9 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
           ),
           _buildRequirementRow(
             "One number or special character",
-            _newPasswordController.text.contains(RegExp(r'[0-9!@#$%^&*(),.?":{}|<>]')),
+            _newPasswordController.text.contains(
+              RegExp(r'[0-9!@#$%^&*(),.?":{}|<>]'),
+            ),
           ),
         ],
       ),
@@ -929,7 +948,9 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
             height: 20,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isMet ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2),
+              color: isMet
+                  ? Colors.green.withOpacity(0.2)
+                  : Colors.red.withOpacity(0.2),
               border: Border.all(
                 color: isMet ? Colors.green : Colors.red,
                 width: 1,
@@ -945,7 +966,9 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
           Text(
             text,
             style: TextStyle(
-              color: isMet ? Colors.white.withOpacity(0.9) : Colors.white.withOpacity(0.5),
+              color: isMet
+                  ? Colors.white.withOpacity(0.9)
+                  : Colors.white.withOpacity(0.5),
               fontSize: 14,
               fontWeight: FontWeight.w400,
               decoration: isMet ? null : TextDecoration.lineThrough,
@@ -988,10 +1011,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
             decoration: BoxDecoration(
               gradient: isLoading
                   ? const LinearGradient(
-                      colors: [
-                        Color(0xFF00D4FF),
-                        Color(0xFF00FF88),
-                      ],
+                      colors: [Color(0xFF00D4FF), Color(0xFF00FF88)],
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                     )
@@ -1025,7 +1045,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                   )
                 else
                   const Text(
-                    "RESET PASSWORD",
+                    "UPDATE PASSWORD",
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,

@@ -1,5 +1,6 @@
 import 'package:clifting_app/features/auth/data/model/forget_password_model.dart';
 import 'package:clifting_app/features/auth/data/model/login_model.dart';
+import 'package:clifting_app/features/auth/data/model/user_model.dart';
 import 'package:clifting_app/features/auth/data/model/verify_reset_password_otp.dart';
 import 'package:dio/dio.dart';
 import 'package:clifting_app/core/network/api_client.dart';
@@ -83,6 +84,33 @@ class AuthService {
         data: request.toJson(),
       );
       return VerifyResetPasswordOtpResponse.fromJson(response.data);
+    } on DioException catch (e) {
+      throw e.error ?? UnknownException('Something went wrong failed');
+    }
+  }
+
+  // Change Password api 
+  Future<VerifyResetPasswordOtpResponse> changePassword(ChangePasswordRequest request) async {
+      try {
+      final response = await _apiClient.post(
+        '/auth/reset-password',
+        data: request.toJson(),
+      );
+      return VerifyResetPasswordOtpResponse.fromJson(response.data);
+     
+    } on DioException catch (e) {
+      throw e.error ?? UnknownException('Something went wrong failed');
+    }
+  }
+
+  // Get User Profile
+  Future<UserModel> getUserProfile() async {
+      try {
+      final response = await _apiClient.get(
+        '/user/profile'
+      );
+      return UserModel.fromJson(response.data);
+     
     } on DioException catch (e) {
       throw e.error ?? UnknownException('Something went wrong failed');
     }

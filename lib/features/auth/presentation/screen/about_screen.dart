@@ -1,9 +1,9 @@
-import 'package:clifting_app/features/auth/data/model/login_model.dart';
+import 'package:clifting_app/features/auth/data/model/user_model.dart';
 import 'package:clifting_app/utility/colors.dart';
 import 'package:flutter/material.dart';
 
 class AboutScreen extends StatelessWidget {
-  final User user;
+  final UserResponse user;
 
   const AboutScreen({super.key, required this.user});
 
@@ -11,10 +11,9 @@ class AboutScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // Format date of birth
     String formattedDateOfBirth = 'Not set';
-    if (user.dateOfBirth != null) {
-      final date = user.dateOfBirth!;
-      formattedDateOfBirth = '${_getMonthName(date.month)} ${date.day}, ${date.year}';
-    }
+    final date = user.dateOfBirth!;
+    formattedDateOfBirth =
+        '${_getMonthName(date.month)} ${date.day}, ${date.year}';
 
     return Scaffold(
       backgroundColor: AppColors.midnightBlue,
@@ -114,8 +113,12 @@ class AboutScreen extends StatelessWidget {
                                         shape: BoxShape.circle,
                                         gradient: LinearGradient(
                                           colors: [
-                                            AppColors.cyberBlue.withOpacity(0.3),
-                                            AppColors.cyberBlue.withOpacity(0.1),
+                                            AppColors.cyberBlue.withOpacity(
+                                              0.3,
+                                            ),
+                                            AppColors.cyberBlue.withOpacity(
+                                              0.1,
+                                            ),
                                           ],
                                         ),
                                       ),
@@ -163,7 +166,7 @@ class AboutScreen extends StatelessWidget {
                                 SizedBox(height: 20),
                               ],
                             ),
-                          
+
                           // Personal Info
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -199,16 +202,36 @@ class AboutScreen extends StatelessWidget {
                                 ],
                               ),
                               SizedBox(height: 10),
-                              _buildInfoRow('Date of Birth', formattedDateOfBirth, Icons.cake_outlined),
-                              _buildInfoRow('Gender', user.gender ?? 'Not set', Icons.transgender),
-                              _buildInfoRow('Looking for', user.lookingFor ?? 'Not set', Icons.search),
-                              _buildInfoRow('Education', user.education ?? 'Not set', Icons.school_outlined),
-                              _buildInfoRow('Profession', user.profession ?? 'Not set', Icons.work_outline),
+                              _buildInfoRow(
+                                'Date of Birth',
+                                formattedDateOfBirth,
+                                Icons.cake_outlined,
+                              ),
+                              _buildInfoRow(
+                                'Gender',
+                                user.gender ?? 'Not set',
+                                Icons.transgender,
+                              ),
+                              _buildInfoRow(
+                                'Looking for',
+                                user.lookingFor ?? 'Not set',
+                                Icons.search,
+                              ),
+                              _buildInfoRow(
+                                'Education',
+                                user.education ?? 'Not set',
+                                Icons.school_outlined,
+                              ),
+                              _buildInfoRow(
+                                'Profession',
+                                user.profession ?? 'Not set',
+                                Icons.work_outline,
+                              ),
                             ],
                           ),
-                          
+
                           SizedBox(height: 20),
-                          
+
                           // Contact Info
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -244,15 +267,32 @@ class AboutScreen extends StatelessWidget {
                                 ],
                               ),
                               SizedBox(height: 10),
-                              _buildInfoRow('Email', user.email ?? '', Icons.email_outlined),
-                              _buildInfoRow('Phone', user.phone ?? 'Not set', Icons.phone_outlined),
-                              _buildInfoRow('City', user.city ?? 'Not set', Icons.location_city_outlined),
-                              _buildInfoRow('Country', user.country ?? 'Not set', Icons.public_outlined),
+                              _buildInfoRow(
+                                'Email',
+                                user.email ?? '',
+                                Icons.email_outlined,
+                              ),
+                              _buildInfoRow(
+                                'Phone',
+                                user.phoneNumber ?? 'Not set',
+                                Icons.phone_outlined,
+                              ),
+                              _buildInfoRow(
+                                'City',
+                                user.city ?? 'Not set',
+                                Icons.location_city_outlined,
+                              ),
+                              _buildInfoRow(
+                                'Country',
+                                user.country ?? 'Not set',
+                                Icons.public_outlined,
+                              ),
                             ],
                           ),
-                          
+
                           // Interests
-                          if (user.interests != null && user.interests!.isNotEmpty)
+                          if (user.interests != null &&
+                              user.interests!.isNotEmpty)
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -265,8 +305,12 @@ class AboutScreen extends StatelessWidget {
                                         shape: BoxShape.circle,
                                         gradient: LinearGradient(
                                           colors: [
-                                            AppColors.cyberBlue.withOpacity(0.3),
-                                            AppColors.cyberBlue.withOpacity(0.1),
+                                            AppColors.cyberBlue.withOpacity(
+                                              0.3,
+                                            ),
+                                            AppColors.cyberBlue.withOpacity(
+                                              0.1,
+                                            ),
                                           ],
                                         ),
                                       ),
@@ -292,42 +336,51 @@ class AboutScreen extends StatelessWidget {
                                   spacing: 8,
                                   runSpacing: 8,
                                   children: user.interests!
-                                      .map((interest) => Container(
-                                            padding: EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 6,
+                                      .map(
+                                        (interest) => Container(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 6,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(
+                                              16,
                                             ),
-                                            decoration: BoxDecoration(
-                                              borderRadius: BorderRadius.circular(16),
-                                              gradient: LinearGradient(
-                                                colors: [
-                                                  AppColors.cyberBlue.withOpacity(0.3),
-                                                  AppColors.electricGold.withOpacity(0.2),
-                                                ],
-                                                begin: Alignment.topLeft,
-                                                end: Alignment.bottomRight,
-                                              ),
-                                              border: Border.all(
-                                                color: AppColors.cyberBlue.withOpacity(0.4),
-                                                width: 1,
-                                              ),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: AppColors.cyberBlue.withOpacity(0.2),
-                                                  blurRadius: 5,
-                                                  offset: Offset(0, 2),
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                AppColors.cyberBlue.withOpacity(
+                                                  0.3,
                                                 ),
+                                                AppColors.electricGold
+                                                    .withOpacity(0.2),
                                               ],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
                                             ),
-                                            child: Text(
-                                              interest,
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w500,
+                                            border: Border.all(
+                                              color: AppColors.cyberBlue
+                                                  .withOpacity(0.4),
+                                              width: 1,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: AppColors.cyberBlue
+                                                    .withOpacity(0.2),
+                                                blurRadius: 5,
+                                                offset: Offset(0, 2),
                                               ),
+                                            ],
+                                          ),
+                                          child: Text(
+                                            interest,
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
                                             ),
-                                          ))
+                                          ),
+                                        ),
+                                      )
                                       .toList(),
                                 ),
                               ],
@@ -357,18 +410,11 @@ class AboutScreen extends StatelessWidget {
             Colors.white.withOpacity(0.01),
           ],
         ),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.1),
-          width: 1,
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
       ),
       child: Row(
         children: [
-          Icon(
-            icon,
-            color: AppColors.cyberBlue,
-            size: 16,
-          ),
+          Icon(icon, color: AppColors.cyberBlue, size: 16),
           SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -401,8 +447,18 @@ class AboutScreen extends StatelessWidget {
 
   String _getMonthName(int month) {
     const monthNames = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return monthNames[month - 1];
   }

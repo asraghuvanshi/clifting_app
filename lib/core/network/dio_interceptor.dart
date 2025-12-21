@@ -13,8 +13,18 @@ class DioInterceptor extends Interceptor {
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
-    // Add auth token to headers
+  
+
     final token = await storageService.getAccessToken();
+      // Add auth token to headers
+        debugPrint('=== REQUEST INTERCEPTOR ===');
+    debugPrint('URL: ${options.baseUrl}${options.path}');
+    debugPrint('Method: ${options.method}');
+    
+    // Add auth token to headers
+    debugPrint('Token from storage: ${token ?? "NULL"}');
+    debugPrint('Token length: ${token?.length ?? 0}');
+    
     if (token != null) {
       options.headers[ApiConstants.authorization] = 'Bearer $token';
     }
