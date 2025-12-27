@@ -1,17 +1,16 @@
-import 'package:clifting_app/features/auth/data/model/user_model.dart';
+import 'package:clifting_app/features/auth/data/model/user_profile_model.dart';
 import 'package:clifting_app/utility/colors.dart';
 import 'package:flutter/material.dart';
 
 class AboutScreen extends StatelessWidget {
-  final UserResponse user;
+  final UserProfileResponse user;
 
   const AboutScreen({super.key, required this.user});
 
   @override
   Widget build(BuildContext context) {
-    // Format date of birth
     String formattedDateOfBirth = 'Not set';
-    final date = user.dateOfBirth!;
+    final DateTime date = user.user?.dateOfBirth ?? DateTime.now();
     formattedDateOfBirth =
         '${_getMonthName(date.month)} ${date.day}, ${date.year}';
 
@@ -101,7 +100,7 @@ class AboutScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Bio Section
-                          if (user.bio != null && user.bio!.isNotEmpty)
+                          if (user.user?.bio != null)
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -155,7 +154,7 @@ class AboutScreen extends StatelessWidget {
                                     ),
                                   ),
                                   child: Text(
-                                    user.bio!,
+                                    user.user?.bio ?? "",
                                     style: TextStyle(
                                       color: Colors.white.withOpacity(0.9),
                                       fontSize: 14,
@@ -209,22 +208,22 @@ class AboutScreen extends StatelessWidget {
                               ),
                               _buildInfoRow(
                                 'Gender',
-                                user.gender ?? 'Not set',
+                                user.user?.gender ?? 'Not set',
                                 Icons.transgender,
                               ),
                               _buildInfoRow(
                                 'Looking for',
-                                user.lookingFor ?? 'Not set',
+                                user.user?.lookingFor ?? 'Not set',
                                 Icons.search,
                               ),
                               _buildInfoRow(
                                 'Education',
-                                user.education ?? 'Not set',
+                                user.user?.education ?? 'Not set',
                                 Icons.school_outlined,
                               ),
                               _buildInfoRow(
                                 'Profession',
-                                user.profession ?? 'Not set',
+                                user.user?.profession ?? 'Not set',
                                 Icons.work_outline,
                               ),
                             ],
@@ -269,30 +268,29 @@ class AboutScreen extends StatelessWidget {
                               SizedBox(height: 10),
                               _buildInfoRow(
                                 'Email',
-                                user.email ?? '',
+                                user.user?.email ?? '',
                                 Icons.email_outlined,
                               ),
                               _buildInfoRow(
                                 'Phone',
-                                user.phoneNumber ?? 'Not set',
+                                user.user?.phone ?? 'Not set',
                                 Icons.phone_outlined,
                               ),
                               _buildInfoRow(
                                 'City',
-                                user.city ?? 'Not set',
+                                user.user?.city ?? 'Not set',
                                 Icons.location_city_outlined,
                               ),
                               _buildInfoRow(
                                 'Country',
-                                user.country ?? 'Not set',
+                                user.user?.country ?? 'Not set',
                                 Icons.public_outlined,
                               ),
                             ],
                           ),
 
                           // Interests
-                          if (user.interests != null &&
-                              user.interests!.isNotEmpty)
+                          if (user.user?.interests != null)
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -335,10 +333,10 @@ class AboutScreen extends StatelessWidget {
                                 Wrap(
                                   spacing: 8,
                                   runSpacing: 8,
-                                  children: user.interests!
-                                      .map(
+                                  children: (user.user?.interests ?? [])
+                                      .map<Widget>(
                                         (interest) => Container(
-                                          padding: EdgeInsets.symmetric(
+                                          padding: const EdgeInsets.symmetric(
                                             horizontal: 12,
                                             vertical: 6,
                                           ),
@@ -367,13 +365,13 @@ class AboutScreen extends StatelessWidget {
                                                 color: AppColors.cyberBlue
                                                     .withOpacity(0.2),
                                                 blurRadius: 5,
-                                                offset: Offset(0, 2),
+                                                offset: const Offset(0, 2),
                                               ),
                                             ],
                                           ),
                                           child: Text(
                                             interest,
-                                            style: TextStyle(
+                                            style: const TextStyle(
                                               color: Colors.white,
                                               fontSize: 12,
                                               fontWeight: FontWeight.w500,

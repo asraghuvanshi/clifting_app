@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'package:clifting_app/features/auth/data/model/user_model.dart';
+import 'package:clifting_app/core/services/storage_service.dart';
+import 'package:clifting_app/features/auth/data/model/user_profile_model.dart';
 import 'package:clifting_app/features/auth/presentation/notifier/auth_notifier.dart';
 import 'package:clifting_app/features/auth/presentation/provider/auth_provider.dart';
 import 'package:clifting_app/features/auth/presentation/screen/about_screen.dart';
 import 'package:clifting_app/features/auth/presentation/screen/edit_profile_screen.dart';
+import 'package:clifting_app/features/auth/presentation/screen/login_screen.dart';
 import 'package:clifting_app/features/auth/presentation/screen/setting_screen.dart';
 import 'package:clifting_app/features/auth/presentation/screen/webview_screen.dart';
 import 'package:clifting_app/utility/colors.dart';
@@ -26,9 +28,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   Timer? _particleTimer;
   final GlobalKey _refreshIndicatorKey = GlobalKey();
 
-  UserResponse? _user;
+  UserProfileModel? _user;
   bool _isLoading = true;
-  bool _isVerified = false;
 
   // Store screen dimensions
   late double _screenWidth;
@@ -132,31 +133,37 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   }
 
   void _navigateToEditProfile() {
-    if (_user != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => EditProfileScreen(
-            user: _user!,
-            onProfileUpdated: (updatedUser) {
-              setState(() {
-                _user = updatedUser;
-                _isVerified = _user?.verified ?? false;
-              });
-            },
-          ),
+    final userData = _user?.data?.user;
+    if (userData == null) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditProfileScreen(
+          user: userData,
+          onProfileUpdated: _onProfileUpdated,
         ),
+      ),
+    );
+  }
+
+  void _onProfileUpdated(User updatedUser) {
+    setState(() {
+      _user = UserProfileModel(
+        success: _user?.success,
+        message: _user?.message,
+        data: UserProfileResponse(user: updatedUser),
       );
-    }
+    });
   }
 
   void _navigateToAbout() {
-    if (_user != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => AboutScreen(user: _user!)),
-      );
-    }
+    final userData = _user?.data;
+    if (userData == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => AboutScreen(user: userData)),
+    );
   }
 
   void _showLogoutDialog() {
@@ -193,8 +200,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           ),
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
-              _logout();
+              if (!mounted) return;
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (route) => false,
+              );
             },
             child: const Text(
               'Logout',
@@ -244,8 +254,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         final response = authState.response;
         if (response.data != null && mounted) {
           setState(() {
-            _user = response.data;
-            _isVerified = _user?.verified ?? false;
+            _user = response;
             _isLoading = false;
           });
         }
@@ -332,9 +341,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                             const SizedBox(height: 30),
 
                             // Quick Stats
-                            _buildQuickStats(),
-
-                            const SizedBox(height: 30),
+                            const SizedBox(height: 20),
 
                             // Main Menu Options
                             _buildMainMenuOptions(),
@@ -474,18 +481,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
 
   Widget _buildProfileHeader() {
     final fullName = _user != null
-        ? '${_user!.firstName} ${_user!.lastName}'.trim()
+        ? '${_user?.data?.user?.firstName} ${_user?.data?.user!.lastName}'
+              .trim()
         : 'Loading...';
 
-    final profession = _user?.profession ?? 'Profession';
-    final city = _user?.city ?? '';
-    final country = _user?.country ?? '';
+    final profession = _user?.data?.user?.profession ?? 'Profession';
+    final city = _user?.data?.user?.city ?? '';
+    final country = _user?.data?.user?.country ?? '';
     final hasLocation = city.isNotEmpty || country.isNotEmpty;
-    final age = _user?.age != null ? '${_user!.age} years' : '';
 
     return Column(
       children: [
-        // Profile Picture with Glow Effect
         Stack(
           alignment: Alignment.center,
           children: [
@@ -538,13 +544,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 ),
               ),
               child: Center(
-                child:
-                    _user?.profileImage != null &&
-                        _user!.profileImage!.isNotEmpty
+                child: _user?.data?.user?.profileImage != null
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(60),
                         child: Image.network(
-                          _user!.profileImage!,
+                          _user?.data?.user?.profileImage ?? "",
                           width: 116,
                           height: 116,
                           fit: BoxFit.cover,
@@ -591,35 +595,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                       ),
               ),
             ),
-
-            // Verified Badge
-            if (_isVerified)
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [Colors.green, Colors.lightGreen],
-                    ),
-                    border: Border.all(color: Colors.white, width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.green.withOpacity(0.5),
-                        blurRadius: 10,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.verified,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                ),
-              ),
           ],
         ),
 
@@ -652,21 +627,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 ),
               ),
 
-            const SizedBox(height: 4),
-
-            if (age.isNotEmpty)
-              Text(
-                age,
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.7),
-                  fontSize: 14,
-                ),
-              ),
-
             const SizedBox(height: 12),
 
             // Location and Info Row
-            if (hasLocation || (_user?.interests?.isNotEmpty ?? false))
+            if (hasLocation ||
+                (_user?.data?.user?.interests?.isNotEmpty ?? false))
               Wrap(
                 spacing: 10,
                 runSpacing: 10,
@@ -682,50 +647,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                           : country,
                       color: AppColors.cyberBlue,
                     ),
-
-                  if (_user?.gender?.isNotEmpty ?? false)
-                    _buildInfoChip(
-                      icon: Icons.person_outline,
-                      text: _user!.gender!,
-                      color: AppColors.electricGold,
-                    ),
-
-                  if (_user?.lookingFor?.isNotEmpty ?? false)
-                    _buildInfoChip(
-                      icon: Icons.search,
-                      text: _user!.lookingFor!,
-                      color: Colors.purpleAccent,
-                    ),
                 ],
-              ),
-
-            // Interests
-            if (_user?.interests?.isNotEmpty ?? false)
-              Padding(
-                padding: const EdgeInsets.only(top: 16),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  alignment: WrapAlignment.center,
-                  children: _user!.interests!.take(5).map((interest) {
-                    return Chip(
-                      label: Text(
-                        interest,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                        ),
-                      ),
-                      backgroundColor: Colors.white.withOpacity(0.1),
-                      side: BorderSide(
-                        color: AppColors.cyberBlue.withOpacity(0.3),
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    );
-                  }).toList(),
-                ),
               ),
           ],
         ),
@@ -759,67 +681,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickStats() {
-    final likesReceived = _user?.likesReceived ?? 0;
-    final profileViews = _user?.profileViews ?? 0;
-    final matchesCount = _user?.matchesCount ?? 0;
-    final unreadCount = _user?.unreadCount ?? 0;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(
-          colors: [
-            Colors.white.withOpacity(0.1),
-            Colors.white.withOpacity(0.05),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.5),
-            blurRadius: 15,
-            offset: const Offset(0, 6),
-          ),
-          BoxShadow(
-            color: AppColors.cyberBlue.withOpacity(0.1),
-            blurRadius: 20,
-            spreadRadius: 1,
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildStatItem(
-            'Likes',
-            likesReceived.toString(),
-            Icons.favorite_outline,
-          ),
-          _buildStatItem(
-            'Views',
-            profileViews.toString(),
-            Icons.visibility_outlined,
-          ),
-          _buildStatItem(
-            'Matches',
-            matchesCount.toString(),
-            Icons.people_outline,
-          ),
-          _buildStatItem(
-            'Unread',
-            unreadCount.toString(),
-            Icons.message_outlined,
           ),
         ],
       ),

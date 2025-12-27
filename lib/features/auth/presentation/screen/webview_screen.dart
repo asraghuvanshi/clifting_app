@@ -1,3 +1,4 @@
+import 'package:clifting_app/core/constants/api_constants.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -65,7 +66,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
   }
 
   String _getApiUrl() {
-    final baseUrl = 'http://10.45.223.191:8080/api/content';
+    final baseUrl = '${ApiConstants.baseUrl}/content';
     switch (widget.type) {
       case 'terms':
         return '$baseUrl/terms';

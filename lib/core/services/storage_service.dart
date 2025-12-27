@@ -23,11 +23,7 @@ class StorageService {
     await _prefs.remove(_refreshTokenKey);
     await _prefs.remove(_userDataKey);
   }
-  
-  // User data
-  Future<void> saveUserData(String userData) async {
-    await _prefs.setString(_userDataKey, userData);
-  }
+
   
   String? getUserData() => _prefs.getString(_userDataKey);
   

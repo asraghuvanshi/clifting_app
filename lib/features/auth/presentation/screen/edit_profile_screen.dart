@@ -1,7 +1,5 @@
 import 'dart:io';
-import 'package:clifting_app/features/auth/data/model/login_model.dart';
-import 'package:clifting_app/features/auth/data/model/user_model.dart';
-import 'package:clifting_app/features/auth/presentation/provider/auth_provider.dart';
+import 'package:clifting_app/features/auth/data/model/user_profile_model.dart';
 import 'package:clifting_app/utility/colors.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -9,8 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
-  final UserResponse user;
-  final Function(UserResponse) onProfileUpdated;
+  final User user;
+  final Function(User) onProfileUpdated;
 
   const EditProfileScreen({
     super.key,
@@ -52,7 +50,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _firstNameController = TextEditingController(text: widget.user.firstName ?? '');
     _lastNameController = TextEditingController(text: widget.user.lastName ?? '');
     _emailController = TextEditingController(text: widget.user.email ?? '');
-    _phoneController = TextEditingController(text: widget.user.phoneNumber ?? '');
+    _phoneController = TextEditingController(text: widget.user.phone ?? '');
     _bioController = TextEditingController(text: widget.user.bio ?? '');
     _professionController = TextEditingController(text: widget.user.profession ?? '');
     _educationController = TextEditingController(text: widget.user.education ?? '');

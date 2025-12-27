@@ -2,10 +2,12 @@
 import 'dart:io';
 import 'package:clifting_app/features/auth/data/model/change_password_response.dart';
 import 'package:clifting_app/features/auth/data/model/forget_password_model.dart';
-import 'package:clifting_app/features/auth/data/model/user_model.dart';
+import 'package:clifting_app/features/auth/data/model/login_model.dart';
+import 'package:clifting_app/features/auth/data/model/user_profile_model.dart';
 import 'package:clifting_app/features/auth/data/model/verify_reset_password_otp.dart';
 import 'package:clifting_app/features/auth/data/repositories/auth_repositories.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 sealed class AuthState {}
@@ -27,6 +29,11 @@ class AuthError extends AuthState {
   AuthError(this.message);
 }
 
+class LoginSuccess extends AuthState {
+  final LoginModel response;
+  LoginSuccess(this.response);
+}
+
 /// Reset password
 class ResetPasswordSuccess extends AuthState {
   final ForgotPasswordResponse response; 
@@ -35,7 +42,7 @@ class ResetPasswordSuccess extends AuthState {
 }
 
 class UserProfileSuccess extends AuthState {
-  final UserModel response;
+  final UserProfileModel response;
   UserProfileSuccess(this.response);
 }
 
@@ -69,15 +76,45 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<void> login(String email, String password) async {
-    state = AuthLoading();
-    try {
-      await _repository.login(email, password);
-      state = AuthSuccess();
-    } catch (e) {
-      state = AuthError(e.toString());
+Future<void> login(String email, String password) async {
+  state = AuthLoading();
+  try {
+    final response = await _repository.login(email, password);
+    state = LoginSuccess(response);
+  } catch (e) {
+    String errorMessage = 'Login failed';
+    
+    if (e is DioException) {
+      if (e.response != null) {
+        final data = e.response!.data;
+        errorMessage = data['message'] ?? errorMessage;
+        
+        // Check for common HTTP status codes
+        if (e.response!.statusCode == 401) {
+          errorMessage = 'Invalid email or password';
+        } else if (e.response!.statusCode == 404) {
+          errorMessage = 'User not found';
+        } else if (e.response!.statusCode == 500) {
+          errorMessage = 'Server error. Please try again later.';
+        }
+      } else if (e.type == DioExceptionType.connectionTimeout ||
+                e.type == DioExceptionType.receiveTimeout ||
+                e.type == DioExceptionType.sendTimeout) {
+        errorMessage = 'Connection timeout. Please try again.';
+      } else if (e.type == DioExceptionType.connectionError) {
+        errorMessage = 'No internet connection. Please check your network.';
+      } else if (e.type == DioExceptionType.badResponse) {
+        errorMessage = 'Invalid server response';
+      }
+    } else if (e is SocketException) {
+      errorMessage = 'No internet connection. Please check your network.';
+    } else if (e is FormatException) {
+      errorMessage = 'Invalid response from server';
     }
+    
+    state = AuthError(errorMessage);
   }
+}
 
   Future<void> logout() async {
     state = AuthLoading();
@@ -172,6 +209,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final response = await _repository.getUserProfile();
       state = UserProfileSuccess(response);
+      print(response);
     } catch (e) {
       String errorMessage = 'Failed to retrieve';
       
@@ -189,7 +227,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       } else if (e is SocketException) {
         errorMessage = 'No internet connection. Please check your network.';
       }
-      
+      print(e);
       state = AuthError(errorMessage);
     }
   }
