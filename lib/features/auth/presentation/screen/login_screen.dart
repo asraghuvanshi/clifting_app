@@ -1,10 +1,9 @@
-import 'package:clifting_app/features/auth/presentation/notifier/auth_notifier.dart';
-import 'package:clifting_app/features/auth/presentation/provider/auth_provider.dart';
-import 'package:clifting_app/features/auth/presentation/screen/forget_password_screen.dart';
-import 'package:clifting_app/features/auth/presentation/screen/home_screen.dart';
-import 'package:clifting_app/features/auth/presentation/screen/signup_screen.dart';
+import 'package:clifting_app/core/ui/app_dialogs.dart';
+import 'package:clifting_app/core/ui/app_snackbar.dart';
+import 'package:clifting_app/features/auth/controller/login_controller.dart';
+import 'package:clifting_app/features/auth/state/login_state.dart';
 import 'package:clifting_app/utility/colors.dart';
-import 'package:clifting_app/utility/toast/toast.dart';
+import 'package:clifting_app/utility/validator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
@@ -36,31 +35,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() {});
   }
 
-  Future<void> _login() async {
+  Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
-
-    // Client-side validation
-    if (!_isValidEmail(email)) {
-      _showValidationError('Invalid Email', 'Please enter a valid email address (e.g., user@example.com)');
-      return;
-    }
-
-    if (password.length < 6) {
-      _showValidationError('Invalid Password', 'Password must be at least 6 characters long');
+      HapticFeedback.heavyImpact();
       return;
     }
 
     setState(() => _isLoading = true);
-
+    
     try {
-      await ref.read(authProvider.notifier).login(email, password);
-    } catch (error) {
-      _showErrorDialog(error.toString());
+      // Get the controller
+      final loginController = ref.read(loginControllerProvider.notifier);
+      
+      // Call login
+      await loginController.login(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
+      
+    } catch (e) {
+      _showUnexpectedError();
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -68,143 +62,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  bool _isValidEmail(String email) {
-    final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-    return emailRegex.hasMatch(email);
-  }
-
-  void _showValidationError(String title, String message) {
-    showDialog(
+  void _showUnexpectedError() {
+    AppDialogs.showErrorDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: AppColors.midnightBlue.withOpacity(0.95),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [AppColors.cyberBlue.withOpacity(0.8), Colors.transparent],
-                ),
-              ),
-              child: const Icon(
-                Icons.info_outline,
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          message,
-          style: const TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(
-              'OK',
-              style: TextStyle(
-                color: AppColors.cyberBlue,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
+      title: "Oops!",
+      message: "Something went wrong. Please try again later.",
+      onRetry: _handleLogin,
     );
   }
 
-  void _showErrorDialog(String message) {
-    String cleanMessage = message;
-    String title = 'Login Failed';
-
-    if (message.contains('Exception: ')) {
-      cleanMessage = message.substring(message.indexOf(': ') + 2);
-    }
-
-    if (message.contains('Invalid credentials') ||
-        message.contains('email or password') ||
-        message.contains('401') ||
-        message.contains('Unauthorized')) {
-      title = 'Invalid Credentials';
-      cleanMessage = 'The email or password you entered is incorrect. Please try again.';
-    } else if (message.contains('timeout') ||
-        message.contains('connection') ||
-        message.contains('Network') ||
-        message.contains('Socket')) {
-      title = 'Connection Error';
-      cleanMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
-    } else if (message.contains('server') ||
-        message.contains('500') ||
-        message.contains('Internal Server')) {
-      title = 'Server Error';
-      cleanMessage = 'We\'re experiencing technical difficulties. Please try again later.';
-    } else if (message.contains('404') || message.contains('Not Found')) {
-      title = 'Service Unavailable';
-      cleanMessage = 'The service is currently unavailable. Please try again later.';
-    }
-
-    showDialog(
+  void _showValidationError(String message) {
+    AppDialogs.showErrorDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: AppColors.midnightBlue.withOpacity(0.95),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [Colors.red.withOpacity(0.8), Colors.transparent],
-                ),
-              ),
-              child: const Icon(
-                Icons.error_outline,
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          cleanMessage,
-          style: const TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(
-              'OK',
-              style: TextStyle(
-                color: AppColors.cyberBlue,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
+      title: "Validation Error",
+      message: message,
+      onRetry: null,
     );
   }
 
@@ -219,17 +91,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<AuthState>(authProvider, (previous, next) {
-      if (next is LoginSuccess) {
-        final response = next.response;
-
-        ToastMessage.showSuccessAndNavigate(
-          context: context,
-          message: response.message ?? "",
-          destination: HomeScreen(),
-        );
-      } else if (next is AuthError) {
-        _showErrorDialog(next.message);
+    // Listen to state changes
+    ref.listen<LoginState>(loginControllerProvider, (previous, current) {
+      if (current is LoginError) {
+        // Handle API errors
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          showAppSnackBar(context, current.error.message, isError: true);
+        });
+      }
+      
+      if (current is LoginSuccess) {
+        // Show success dialog then navigate
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          AppDialogs.showSuccessDialog(
+            context: context,
+            title: "Success!",
+            message: "Welcome back to Clifting!",
+            onContinue: () {
+              Navigator.pushReplacement(
+                context,
+                PageRouteBuilder( // home screen redirections
+                  pageBuilder: (context, animation1, animation2) => const Text(""),
+                  transitionDuration: const Duration(milliseconds: 800),
+                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: child,
+                    );
+                  },
+                ),
+              );
+            },
+          );
+        });
       }
     });
 
@@ -268,60 +162,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       Center(
                         child: Column(
                           children: [
-                            Container(
-                              width: 100,
-                              height: 100,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: RadialGradient(
-                                  colors: [
-                                    AppColors.cyberBlue.withOpacity(0.4),
-                                    AppColors.electricGold.withOpacity(0.2),
-                                    Colors.transparent,
-                                  ],
-                                  stops: const [0.1, 0.5, 1.0],
-                                ),
-                              ),
-                              child: Center(
-                                child: Container(
-                                  width: 70,
-                                  height: 70,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        AppColors.electricGold,
-                                        AppColors.cyberBlue,
-                                      ],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: AppColors.cyberBlue.withOpacity(
-                                          0.5,
-                                        ),
-                                        blurRadius: 20,
-                                        spreadRadius: 5,
-                                      ),
-                                    ],
-                                  ),
-                                  child: const Center(
-                                    child: Icon(
-                                      Icons.favorite,
-                                      color: Colors.white,
-                                      size: 36,
-                                      shadows: [
-                                        Shadow(
-                                          color: Colors.black,
-                                          blurRadius: 10,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
+                            // Animated logo
+                            AnimatedLogo(isLoading: _isLoading),
                             const SizedBox(height: 20),
                             Container(
                               padding: const EdgeInsets.symmetric(
@@ -389,6 +231,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               label: "EMAIL",
                               hint: "Enter your email",
                               icon: Icons.email_outlined,
+                              validator: Validators.validateEmail,
                             ),
                             const SizedBox(height: 20),
 
@@ -400,6 +243,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               hint: "Enter your password",
                               icon: Icons.lock_outline,
                               isPassword: true,
+                              validator: Validators.validatePassword,
                             ),
                             const SizedBox(height: 16),
 
@@ -411,13 +255,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 child: GestureDetector(
                                   onTap: () {
                                     HapticFeedback.lightImpact();
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            const ForgotPasswordScreen(),
-                                      ),
-                                    );
+                                    // Navigator.push(
+                                    //   context,
+                                    //   MaterialPageRoute(
+                                    //     builder: (context) =>
+                                    //         const ForgotPasswordScreen(),
+                                    //   ),
+                                    // );
                                   },
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
@@ -445,7 +289,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       const SizedBox(height: 40),
 
                       // Login Button
-                      _buildLoginButton(_isLoading),
+                      _buildLoginButton(),
                       const SizedBox(height: 40),
 
                       // Divider
@@ -502,6 +346,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     required String label,
     required String hint,
     required IconData icon,
+    required FormFieldValidator<String>? validator,
     bool isPassword = false,
   }) {
     final isFocused = focusNode.hasFocus;
@@ -509,7 +354,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Label - Always visible
+        // Label
         Padding(
           padding: const EdgeInsets.only(left: 16),
           child: Text(
@@ -603,6 +448,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       controller: controller,
                       focusNode: focusNode,
                       obscureText: isPassword ? _obscure : false,
+                      validator: validator,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -616,7 +462,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         border: InputBorder.none,
                         isCollapsed: true,
-                        errorText: null,
                         errorStyle: const TextStyle(height: 0),
                       ),
                     ),
@@ -663,12 +508,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _buildLoginButton(bool isLoading) {
+  Widget _buildLoginButton() {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(28),
-        onTap: isLoading ? null : _login,
+        onTap: _isLoading ? null : _handleLogin,
         splashColor: Colors.white.withOpacity(0.2),
         highlightColor: Colors.white.withOpacity(0.1),
         child: Container(
@@ -676,13 +521,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(28),
             gradient: LinearGradient(
-              colors: isLoading
+              colors: _isLoading
                   ? [Colors.grey.shade700, Colors.grey.shade900]
                   : [AppColors.cyberBlue, AppColors.electricGold],
             ),
+            boxShadow: _isLoading
+                ? null
+                : [
+                    BoxShadow(
+                      color: AppColors.cyberBlue.withOpacity(0.4),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
           ),
           child: Center(
-            child: isLoading
+            child: _isLoading
                 ? const SizedBox(
                     height: 24,
                     width: 24,
@@ -818,7 +673,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const SignupScreen()),
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation1, animation2) =>
+                        const Text(""),
+                    transitionDuration: const Duration(milliseconds: 800),
+                    transitionsBuilder:
+                        (context, animation, secondaryAnimation, child) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: child,
+                      );
+                    },
+                  ),
                 );
               },
               child: Container(
@@ -893,6 +759,122 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// Animated Logo Widget
+class AnimatedLogo extends StatefulWidget {
+  final bool isLoading;
+
+  const AnimatedLogo({Key? key, required this.isLoading}) : super(key: key);
+
+  @override
+  State<AnimatedLogo> createState() => _AnimatedLogoState();
+}
+
+class _AnimatedLogoState extends State<AnimatedLogo>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void didUpdateWidget(AnimatedLogo oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isLoading) {
+      _controller.repeat();
+    } else {
+      _controller.stop();
+      _controller.value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              colors: [
+                AppColors.cyberBlue.withOpacity(0.4 * _controller.value),
+                AppColors.electricGold.withOpacity(0.2 * _controller.value),
+                Colors.transparent,
+              ],
+              stops: const [0.1, 0.5, 1.0],
+            ),
+          ),
+          child: Center(
+            child: Transform.rotate(
+              angle: widget.isLoading ? _controller.value * 2 * 3.1416 : 0,
+              child: Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.electricGold,
+                      AppColors.cyberBlue,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.cyberBlue.withOpacity(
+                        0.5 * _controller.value,
+                      ),
+                      blurRadius: 20,
+                      spreadRadius: 5,
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: widget.isLoading
+                      ? const SizedBox(
+                          width: 30,
+                          height: 30,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.favorite,
+                          color: Colors.white,
+                          size: 36,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black,
+                              blurRadius: 10,
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

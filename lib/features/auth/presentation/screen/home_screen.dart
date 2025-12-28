@@ -39,7 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildMessagesScreen(),
           
           // Profile Tab
-           const ProfileScreen(),
+          //  const ProfileScreen(),
         ],
       ),
       bottomNavigationBar: _buildBottomNavigationBar(),
@@ -507,65 +507,72 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildBottomNavigationBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.midnightBlue,
-        border: Border(
-          top: BorderSide(color: Colors.white.withOpacity(0.1)),
-        ),
+ Widget _buildBottomNavigationBar() {
+  return Container(
+    decoration: BoxDecoration(
+      color: AppColors.midnightBlue,
+      border: Border(
+        top: BorderSide(color: Colors.white.withOpacity(0.1)),
       ),
-      child: SafeArea(
-        top: false, // Don't extend into system status bar area
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildNavItem(Icons.explore_outlined, "Discover", 0),
-              _buildNavItem(Icons.favorite_border, "Matches", 1),
-              _buildNavItem(Icons.chat_bubble_outline, "Messages", 2),
-              _buildNavItem(Icons.person_outline, "Profile", 3),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, int index) {
-    return GestureDetector(
-      onTap: () {
-        setState(() => _selectedIndex = index);
-        _pageController.jumpToPage(index);
-      },
-      child: SizedBox(
-        width: MediaQuery.of(context).size.width / 4 - 20,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+    ),
+    child: SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Icon(
-              icon,
-              color: _selectedIndex == index
-                  ? AppColors.electricGold
-                  : Colors.white.withOpacity(0.6),
-              size: 24,
+            // Use Expanded with flex: 1 for equal spacing
+            Expanded(
+              flex: 1,
+              child: _buildNavItem(Icons.explore_outlined, "Discover", 0),
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: _selectedIndex == index
-                    ? AppColors.electricGold
-                    : Colors.white.withOpacity(0.6),
-                fontSize: 12,
-              ),
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
+            Expanded(
+              flex: 1,
+              child: _buildNavItem(Icons.favorite_border, "Matches", 1),
+            ),
+            Expanded(
+              flex: 1,
+              child: _buildNavItem(Icons.chat_bubble_outline, "Messages", 2),
+            ),
+            Expanded(
+              flex: 1,
+              child: _buildNavItem(Icons.person_outline, "Profile", 3),
             ),
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
+Widget _buildNavItem(IconData icon, String label, int index) {
+  return GestureDetector(
+    onTap: () {
+      setState(() => _selectedIndex = index);
+      _pageController.jumpToPage(index);
+    },
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          icon,
+          color: _selectedIndex == index
+              ? AppColors.electricGold
+              : Colors.white.withOpacity(0.6),
+          size: 24,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            color: _selectedIndex == index
+                ? AppColors.electricGold
+                : Colors.white.withOpacity(0.6),
+            fontSize: 12,
+          ),
+        ),
+      ],
+    ),
+  );
+}
 }
