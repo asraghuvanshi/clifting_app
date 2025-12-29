@@ -1,6 +1,4 @@
 import 'dart:math' as math;
-
-import 'package:clifting_app/features/auth/presentation/screen/login_screen.dart';
 import 'package:clifting_app/utility/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

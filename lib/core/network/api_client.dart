@@ -13,7 +13,7 @@ class ApiClient {
             receiveTimeout:
                 const Duration(milliseconds: ApiConstants.receiveTimeout),
             headers: {
-              ApiConstants.contentType: ApiConstants.contentType,
+              'content-type': 'application/json',
             },
           ),
         ) {
@@ -23,7 +23,7 @@ class ApiClient {
     ));
   }
 
-  // 🔹 POST
+  //  POST
   Future<Response> post(
     String path, {
     dynamic data,
@@ -36,7 +36,7 @@ class ApiClient {
     );
   }
 
-  // 🔹 GET
+  //  GET
   Future<Response> get(
     String path, {
     Map<String, dynamic>? query,

@@ -1,7 +1,6 @@
 // lib/features/auth/data/models/auth_models.dart
 import 'dart:convert';
 
-import 'package:clifting_app/features/auth/data/model/verify_reset_password_otp.dart';
 
 class LoginRequest {
   final String email;

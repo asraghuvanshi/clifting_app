@@ -1,6 +1,6 @@
-import 'package:clifting_app/features/auth/data/model/login_model.dart';
+import 'package:clifting_app/core/network/api_exception.dart';
+import 'package:clifting_app/presentation/features/auth/data/model/login_model.dart';
 
-import '../../../core/network/api_exception.dart';
 
 sealed class LoginState {}
 

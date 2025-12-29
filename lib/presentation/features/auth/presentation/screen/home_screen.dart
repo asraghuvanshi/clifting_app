@@ -1,4 +1,4 @@
-import 'package:clifting_app/features/auth/presentation/screen/profile_screen.dart';
+import 'package:clifting_app/presentation/auth/presentation/screen/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:clifting_app/utility/colors.dart';
 

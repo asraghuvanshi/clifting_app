@@ -1,5 +1,5 @@
 import 'package:clifting_app/core/storage/token_storage.dart';
-import 'package:clifting_app/features/auth/data/model/login_model.dart';
+import 'package:clifting_app/presentation/features/auth/data/model/login_model.dart';
 
 import 'auth_api.dart';
 

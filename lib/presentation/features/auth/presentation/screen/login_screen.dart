@@ -1,7 +1,7 @@
 import 'package:clifting_app/core/ui/app_dialogs.dart';
 import 'package:clifting_app/core/ui/app_snackbar.dart';
 import 'package:clifting_app/features/auth/controller/login_controller.dart';
-import 'package:clifting_app/features/auth/state/login_state.dart';
+import 'package:clifting_app/presentation/auth/state/login_state.dart';
 import 'package:clifting_app/utility/colors.dart';
 import 'package:clifting_app/utility/validator.dart';
 import 'package:flutter/material.dart';
@@ -27,6 +27,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    _emailController.text = "asraghuvanshi52@gmail.com";
+    _passwordController.text = "Test@!23";
     _emailFocusNode.addListener(_onFocusChange);
     _passwordFocusNode.addListener(_onFocusChange);
   }
@@ -59,6 +61,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+      
     }
   }
 
