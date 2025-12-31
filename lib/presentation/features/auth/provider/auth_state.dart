@@ -1,8 +1,9 @@
+
 import 'package:clifting_app/presentation/features/auth/data/model/login_model.dart';
 
 class AuthState {
   final bool isLoading;
-  final LoginResponse? user;
+  final LoginModel? user;
   final String? error;
   final bool isAuthenticated;
 
@@ -15,7 +16,7 @@ class AuthState {
 
   AuthState copyWith({
     bool? isLoading,
-    LoginResponse? user,
+    LoginModel? user,
     String? error,
     bool? isAuthenticated,
   }) {
@@ -25,10 +26,5 @@ class AuthState {
       error: error ?? this.error,
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
     );
-  }
-
-  @override
-  String toString() {
-    return 'AuthState(isLoading: $isLoading, user: $user, error: $error, isAuthenticated: $isAuthenticated)';
   }
 }

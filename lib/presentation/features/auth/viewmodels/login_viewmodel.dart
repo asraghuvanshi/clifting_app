@@ -1,17 +1,20 @@
-import 'package:clifting_app/core/router/app_navigator.dart';
-import 'package:clifting_app/presentation/features/auth/providers/auth_provider.dart';
+import 'package:clifting_app/presentation/features/auth/provider/auth_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+final loginViewModelProvider = Provider<LoginViewModel>((ref) {
+  return LoginViewModel(ref);
+});
+
 class LoginViewModel {
-  final Ref ref;
-  
-  LoginViewModel(this.ref);
-  
+  final Ref _ref;
+
+  LoginViewModel(this._ref);
+
   Future<void> login(String email, String password) async {
-    await ref.read(authProvider.notifier).login(email, password);
+    await _ref.read(authProvider.notifier).login(email, password);
   }
-  
-  void navigateToSignup() {
-    AppNavigator.toSignup();
-  }
+
+  bool get isLoading => _ref.watch(authProvider).isLoading;
+  String? get error => _ref.watch(authProvider).error;
+  void clearError() => _ref.read(authProvider.notifier).clearError();
 }

@@ -1,7 +1,7 @@
-import 'package:clifting_app/core/ui/app_dialogs.dart';
+import 'package:clifting_app/core/providers/auth_repository_provider.dart';
 import 'package:clifting_app/core/ui/app_snackbar.dart';
-import 'package:clifting_app/features/auth/controller/login_controller.dart';
-import 'package:clifting_app/presentation/auth/state/login_state.dart';
+import 'package:clifting_app/presentation/features/auth/data/model/forget_password_model.dart';
+import 'package:clifting_app/presentation/features/auth/presentation/screen/auth_screens/forget_password_screen.dart';
 import 'package:clifting_app/utility/colors.dart';
 import 'package:clifting_app/utility/validator.dart';
 import 'package:flutter/material.dart';
@@ -16,71 +16,20 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  bool _obscure = true;
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _emailFocusNode = FocusNode();
   final _passwordFocusNode = FocusNode();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  bool _obscure = true;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
     _emailController.text = "asraghuvanshi52@gmail.com";
     _passwordController.text = "Test@!23";
-    _emailFocusNode.addListener(_onFocusChange);
-    _passwordFocusNode.addListener(_onFocusChange);
-  }
-
-  void _onFocusChange() {
-    setState(() {});
-  }
-
-  Future<void> _handleLogin() async {
-    if (!_formKey.currentState!.validate()) {
-      HapticFeedback.heavyImpact();
-      return;
-    }
-
-    setState(() => _isLoading = true);
-    
-    try {
-      // Get the controller
-      final loginController = ref.read(loginControllerProvider.notifier);
-      
-      // Call login
-      await loginController.login(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-      );
-      
-    } catch (e) {
-      _showUnexpectedError();
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-      
-    }
-  }
-
-  void _showUnexpectedError() {
-    AppDialogs.showErrorDialog(
-      context: context,
-      title: "Oops!",
-      message: "Something went wrong. Please try again later.",
-      onRetry: _handleLogin,
-    );
-  }
-
-  void _showValidationError(String message) {
-    AppDialogs.showErrorDialog(
-      context: context,
-      title: "Validation Error",
-      message: message,
-      onRetry: null,
-    );
   }
 
   @override
@@ -92,53 +41,87 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    // Listen to state changes
-    ref.listen<LoginState>(loginControllerProvider, (previous, current) {
-      if (current is LoginError) {
-        // Handle API errors
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          showAppSnackBar(context, current.error.message, isError: true);
-        });
-      }
-      
-      if (current is LoginSuccess) {
-        // Show success dialog then navigate
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          AppDialogs.showSuccessDialog(
-            context: context,
-            title: "Success!",
-            message: "Welcome back to Clifting!",
-            onContinue: () {
-              Navigator.pushReplacement(
-                context,
-                PageRouteBuilder( // home screen redirections
-                  pageBuilder: (context, animation1, animation2) => const Text(""),
-                  transitionDuration: const Duration(milliseconds: 800),
-                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                    return FadeTransition(
-                      opacity: animation,
-                      child: child,
-                    );
-                  },
-                ),
-              );
-            },
-          );
-        });
-      }
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) {
+      HapticFeedback.heavyImpact();
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
     });
 
+    try {
+      final authRepo = ref.read(authRepositoryProvider);
+      final response = await authRepo.login(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
+
+      // Handle successful login
+      if (response.success == true) {
+        // Navigate to home screen or dashboard
+        showAppSnackBar(context, response.message ?? "Login Successful!!", isError: false);
+      } else {
+        setState(() {
+          _errorMessage = response.message ?? 'Login failed. Please try again.';
+        });
+        HapticFeedback.heavyImpact();
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = _getErrorMessage(e);
+      });
+      HapticFeedback.heavyImpact();
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  String _getErrorMessage(dynamic error) {
+    if (error.toString().contains('timeout')) {
+      return 'Connection timeout. Please check your internet.';
+    } else if (error.toString().contains('No address associated')) {
+      return 'No internet connection.';
+    } else if (error.toString().contains('401') || error.toString().contains('403')) {
+      return 'Invalid email or password.';
+    } else if (error.toString().contains('500')) {
+      return 'Server error. Please try again later.';
+    }
+    return 'Login failed. Please try again.';
+  }
+
+
+
+  void _onForgotPassword() {
+    HapticFeedback.lightImpact();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ForgotPasswordScreen(),
+      ),
+    );
+  }
+
+  void _togglePasswordVisibility() {
+    HapticFeedback.lightImpact();
+    setState(() => _obscure = !_obscure);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              const Color(0xFF0A0A0A),
+              Color(0xFF0A0A0A),
               AppColors.midnightBlue,
-              const Color(0xFF1A1A2E),
+              Color(0xFF1A1A2E),
             ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -157,138 +140,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Back button
-                      _buildBackButton(),
-                      const SizedBox(height: 20),
-
                       // Logo Section
-                      Center(
-                        child: Column(
-                          children: [
-                            // Animated logo
-                            AnimatedLogo(isLoading: _isLoading),
-                            const SizedBox(height: 20),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.transparent,
-                                    Colors.white.withOpacity(0.05),
-                                    Colors.transparent,
-                                  ],
-                                ),
-                              ),
-                              child: Column(
-                                children: [
-                                  const Text(
-                                    "CLIFITING",
-                                    style: TextStyle(
-                                      fontSize: 36,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 2,
-                                      color: Colors.white,
-                                      shadows: [
-                                        Shadow(
-                                          color: AppColors.cyberBlue,
-                                          blurRadius: 15,
-                                        ),
-                                        Shadow(
-                                          color: AppColors.electricGold,
-                                          blurRadius: 25,
-                                          offset: Offset(0, 0),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    "Connect • Discover • Love",
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.white.withOpacity(0.7),
-                                      fontWeight: FontWeight.w300,
-                                      letterSpacing: 1,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      _buildLogoSection(),
                       const SizedBox(height: 40),
 
+                      // Error Message
+                      if (_errorMessage != null) _buildErrorCard(),
+                      if (_errorMessage != null) const SizedBox(height: 20),
+
                       // Form
-                      Form(
-                        key: _formKey,
-                        child: Column(
-                          children: [
-                            // Email Field
-                            _buildTextField(
-                              controller: _emailController,
-                              focusNode: _emailFocusNode,
-                              label: "EMAIL",
-                              hint: "Enter your email",
-                              icon: Icons.email_outlined,
-                              validator: Validators.validateEmail,
-                            ),
-                            const SizedBox(height: 20),
-
-                            // Password Field
-                            _buildTextField(
-                              controller: _passwordController,
-                              focusNode: _passwordFocusNode,
-                              label: "PASSWORD",
-                              hint: "Enter your password",
-                              icon: Icons.lock_outline,
-                              isPassword: true,
-                              validator: Validators.validatePassword,
-                            ),
-                            const SizedBox(height: 16),
-
-                            // Forgot Password
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: MouseRegion(
-                                cursor: SystemMouseCursors.click,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    HapticFeedback.lightImpact();
-                                    // Navigator.push(
-                                    //   context,
-                                    //   MaterialPageRoute(
-                                    //     builder: (context) =>
-                                    //         const ForgotPasswordScreen(),
-                                    //   ),
-                                    // );
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 6,
-                                    ),
-                                    child: Text(
-                                      "Forgot Password?",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: AppColors.cyberBlue,
-                                        fontWeight: FontWeight.w600,
-                                        decoration: TextDecoration.underline,
-                                        decorationColor: AppColors.cyberBlue
-                                            .withOpacity(0.6),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      _buildLoginForm(),
                       const SizedBox(height: 40),
 
                       // Login Button
@@ -299,8 +160,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       _buildDivider(),
                       const SizedBox(height: 40),
 
-                      // Social Login Buttons
-                      _buildSocialLoginButtons(),
+                      // Social Login
+                      _buildSocialLogin(),
                       const SizedBox(height: 30),
 
                       // Sign Up Prompt
@@ -316,29 +177,142 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _buildBackButton() {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: () => Navigator.pop(context),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [
-                Colors.white.withOpacity(0.1),
-                Colors.white.withOpacity(0.05),
+  Widget _buildLogoSection() {
+    return Center(
+      child: Column(
+        children: [
+          // Animated logo
+          AnimatedLogo(isLoading: _isLoading),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.transparent,
+                  Colors.white.withOpacity(0.05),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+            child: Column(
+              children: [
+                const Text(
+                  "CLIFITING",
+                  style: TextStyle(
+                    fontSize: 36,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2,
+                    color: Colors.white,
+                    shadows: [
+                      Shadow(
+                        color: AppColors.cyberBlue,
+                        blurRadius: 15,
+                      ),
+                      Shadow(
+                        color: AppColors.electricGold,
+                        blurRadius: 25,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "Connect • Discover • Love",
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.white.withOpacity(0.7),
+                    fontWeight: FontWeight.w300,
+                    letterSpacing: 1,
+                  ),
+                ),
               ],
             ),
-            border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
           ),
-          child: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Colors.white,
-            size: 20,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.red.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline, color: Colors.red.shade300),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _errorMessage!,
+              style: TextStyle(
+                color: Colors.red.shade200,
+                fontSize: 14,
+              ),
+            ),
           ),
-        ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoginForm() {
+    return Form(
+      key: _formKey,
+      child: Column(
+        children: [
+          // Email Field
+          _buildTextField(
+            controller: _emailController,
+            focusNode: _emailFocusNode,
+            label: "EMAIL",
+            hint: "Enter your email",
+            icon: Icons.email_outlined,
+            validator: Validators.validateEmail,
+          ),
+          const SizedBox(height: 20),
+
+          // Password Field
+          _buildTextField(
+            controller: _passwordController,
+            focusNode: _passwordFocusNode,
+            label: "PASSWORD",
+            hint: "Enter your password",
+            icon: Icons.lock_outline,
+            isPassword: true,
+            validator: Validators.validatePassword,
+          ),
+          const SizedBox(height: 16),
+
+          // Forgot Password
+          Align(
+            alignment: Alignment.centerRight,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: _onForgotPassword,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: Text(
+                    "Forgot Password?",
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.cyberBlue,
+                      fontWeight: FontWeight.w600,
+                      decoration: TextDecoration.underline,
+                      decorationColor: AppColors.cyberBlue.withOpacity(0.6),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -410,14 +384,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           offset: const Offset(0, 4),
                         ),
                       ]
-                    : [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 10,
-                          spreadRadius: 1,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+                    : [],
               ),
               child: Row(
                 children: [
@@ -467,6 +434,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         isCollapsed: true,
                         errorStyle: const TextStyle(height: 0),
                       ),
+                      textInputAction:
+                          isPassword ? TextInputAction.done : TextInputAction.next,
+                      onFieldSubmitted: (_) {
+                        if (isPassword) {
+                          _handleLogin();
+                        } else {
+                          FocusScope.of(context).requestFocus(_passwordFocusNode);
+                        }
+                      },
                     ),
                   ),
 
@@ -475,10 +451,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     MouseRegion(
                       cursor: SystemMouseCursors.click,
                       child: GestureDetector(
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          setState(() => _obscure = !_obscure);
-                        },
+                        onTap: _togglePasswordVisibility,
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           margin: const EdgeInsets.only(right: 16),
@@ -627,7 +600,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _buildSocialLoginButtons() {
+  Widget _buildSocialLogin() {
     return Row(
       children: [
         Expanded(
@@ -674,27 +647,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             cursor: SystemMouseCursors.click,
             child: GestureDetector(
               onTap: () {
-                Navigator.push(
-                  context,
-                  PageRouteBuilder(
-                    pageBuilder: (context, animation1, animation2) =>
-                        const Text(""),
-                    transitionDuration: const Duration(milliseconds: 800),
-                    transitionsBuilder:
-                        (context, animation, secondaryAnimation, child) {
-                      return FadeTransition(
-                        opacity: animation,
-                        child: child,
-                      );
-                    },
-                  ),
-                );
+                HapticFeedback.lightImpact();
+                // Navigate to signup screen
+                // Navigator.push(
+                //   context,
+                //   MaterialPageRoute(
+                //     builder: (context) => const SignUpScreen(),
+                //   ),
+                // );
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 child: Text(
                   "Sign Up",
                   style: TextStyle(
@@ -765,8 +728,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 }
-
-// Animated Logo Widget
 class AnimatedLogo extends StatefulWidget {
   final bool isLoading;
 
