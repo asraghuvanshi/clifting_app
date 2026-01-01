@@ -3,6 +3,8 @@ abstract class ApiConstants {
 
   static const String login = '/auth/login';
   static const String forgetPassword = "/auth/forgot-password";
+  static const String resetPassword = '/auth/reset-password';
+
   static const String refreshToken = '/auth/refresh';
   static const String logout = '/auth/logout';
   static const String validateToken = '/auth/validate';

@@ -1,6 +1,5 @@
 import 'package:clifting_app/core/providers/auth_repository_provider.dart';
-import 'package:clifting_app/presentation/features/auth/data/model/forget_password_model.dart';
-import 'package:clifting_app/presentation/features/auth/state/login_state.dart';
+import 'package:clifting_app/presentation/features/auth/states/auth_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:clifting_app/core/router/app_navigator.dart';
 import 'package:clifting_app/presentation/features/auth/data/auth_repository.dart';
@@ -30,7 +29,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (response.success ?? false) {
         state = state.copyWith(
           isLoading: false,
-          user: response.data,
+          user: response,
           isAuthenticated: true,
           error: null,
         );

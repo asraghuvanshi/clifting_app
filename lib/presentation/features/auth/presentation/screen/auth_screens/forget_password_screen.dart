@@ -1,4 +1,6 @@
-import 'package:clifting_app/presentation/features/auth/provider/forget_password_provider.dart';
+import 'package:clifting_app/presentation/features/auth/presentation/screen/otp_verification_screen.dart';
+import 'package:clifting_app/presentation/features/auth/viewmodels/forget_password_provider.dart';
+import 'package:clifting_app/presentation/widgets/button_widget/gradient_button.dart';
 import 'package:clifting_app/utility/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -21,7 +23,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   void initState() {
     super.initState();
     _emailFocusNode.addListener(_onFocusChange);
-    // Clear previous state when screen opens
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(forgetPasswordProvider.notifier).clearData();
     });
@@ -62,39 +64,38 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     }
 
     try {
-      await ref.read(forgetPasswordProvider.notifier).forgetPassword(
-        _emailController.text.trim(),
-      );
+      await ref
+          .read(forgetPasswordProvider.notifier)
+          .forgetPassword(_emailController.text.trim());
 
       await Future.delayed(const Duration(milliseconds: 100));
-      
+
       final state = ref.read(forgetPasswordProvider);
-      
+
       if (state.data?.success == true) {
         final response = state.data!;
-        final responseEmail = response.data.email;
-        final expiresIn = response.data.expiresIn;
-        final resendAfter = response.data.resendAfter;
+        final responseEmail = response.data?.email ?? "";
+        final expiresIn = response.data?.expiresIn ?? "";
+        final resendAfter = response.data?.resendAfter ?? "";
         final message = response.message;
 
         _showSuccessMessage(message);
 
         Future.delayed(const Duration(milliseconds: 1500), () {
-          // Navigator.push(
-          //   context,
-          //   MaterialPageRoute(
-          //     builder: (context) => OTPVerificationScreen(
-          //       email: responseEmail,
-          //       expiresIn: expiresIn,
-          //       resendAfter: resendAfter,
-          //     ),
-          //   ),
-          // );
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OTPVerificationScreen(
+                email: responseEmail,
+                expiresIn: expiresIn,
+                resendAfter: resendAfter,
+              ),
+            ),
+          );
         });
       } else if (state.error != null) {
         _showErrorDialog(state.error!);
       }
-      
     } catch (error) {
       _showErrorDialog(error.toString());
     }
@@ -304,7 +305,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           forgetPasswordState.data!.message,
@@ -315,7 +317,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                                         ),
                                         const SizedBox(height: 8),
                                         Text(
-                                          'Code expires in: ${forgetPasswordState.data!.data.expiresIn}',
+                                          'Code expires in: ${forgetPasswordState.data?.data?.expiresIn ?? ""}',
                                           style: TextStyle(
                                             color: Colors.green.shade200,
                                             fontSize: 12,
@@ -333,7 +335,16 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                           const SizedBox(height: 50),
 
                           // Send Reset Link Button
-                          _buildSendResetButton(isLoading),
+                          PrimaryGradientButton(
+                            title: "Send Verification Code",
+                            icon: Icons.send_rounded,
+                            isLoading: isLoading,
+                            onTap: _forgotPassword,
+                            gradientColors: [
+                              AppColors.cyberBlue,
+                              AppColors.electricGold,
+                            ],
+                          ),
                           const SizedBox(height: 30),
 
                           // Help Text
@@ -536,112 +547,6 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSendResetButton(bool isLoading) {
-    return Container(
-      height: 58,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF00D4FF).withOpacity(0.4),
-            blurRadius: 25,
-            spreadRadius: 0,
-            offset: const Offset(0, 10),
-          ),
-          BoxShadow(
-            color: const Color(0xFFFF0080).withOpacity(0.3),
-            blurRadius: 15,
-            spreadRadius: 0,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(30),
-          onTap: isLoading
-              ? null
-              : () {
-                  HapticFeedback.heavyImpact();
-                  _forgotPassword();
-                },
-          splashColor: Colors.white.withOpacity(0.3),
-          highlightColor: Colors.white.withOpacity(0.2),
-          child: Ink(
-            decoration: BoxDecoration(
-              gradient: isLoading
-                  ? LinearGradient(colors: [Colors.grey, Colors.grey.shade700])
-                  : const LinearGradient(
-                      colors: [
-                        Color(0xFF00D4FF),
-                        Color(0xFFFF0080),
-                        Color(0xFFFF8C00),
-                      ],
-                      stops: [0.0, 0.5, 1.0],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.3),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (isLoading)
-                  SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Colors.white.withOpacity(0.8),
-                      ),
-                    ),
-                  )
-                else
-                  const Text(
-                    "SEND VERIFICATION CODE",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.5,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black26,
-                          blurRadius: 4,
-                          offset: Offset(1, 1),
-                        ),
-                      ],
-                    ),
-                  ),
-                if (!isLoading) const SizedBox(width: 10),
-                if (!isLoading)
-                  const Icon(
-                    Icons.send_rounded,
-                    color: Colors.white,
-                    size: 22,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black26,
-                        blurRadius: 4,
-                        offset: Offset(1, 1),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

@@ -1,4 +1,3 @@
-import 'dart:convert';
 
 class ResetPasswordRequest {
   final String email;
@@ -12,10 +11,10 @@ class ResetPasswordRequest {
   };
 }
 
-class ResetPasswordOTPRequest {
+class VerifyResetOTPRequest {
   final String email;
   final String otp;
-  ResetPasswordOTPRequest({
+  VerifyResetOTPRequest({
     required this.email,
     required this.otp
   });
@@ -26,43 +25,43 @@ class ResetPasswordOTPRequest {
   };
 }
 
-ForgotPasswordResponse forgotPasswordResponseFromJson(String str) => ForgotPasswordResponse.fromJson(json.decode(str));
-
-String forgotPasswordResponseToJson(ForgotPasswordResponse data) => json.encode(data.toJson());
-
 class ForgotPasswordResponse {
-    final bool success;
-    final String message;
-    final ForgotPasswordData data;
+  final bool success;
+  final String message;
+  final ForgotPasswordData? data;
 
-    ForgotPasswordResponse({
-        required this.success,
-        required this.message,
-        required this.data,
-    });
+  ForgotPasswordResponse({
+    required this.success,
+    required this.message,
+    this.data,
+  });
 
-    ForgotPasswordResponse copyWith({
-        bool? success,
-        String? message,
-        ForgotPasswordData? data,
-    }) => 
-        ForgotPasswordResponse(
-            success: success ?? this.success,
-            message: message ?? this.message,
-            data: data ?? this.data,
-        );
+  ForgotPasswordResponse copyWith({
+    bool? success,
+    String? message,
+    ForgotPasswordData? data,
+  }) =>
+      ForgotPasswordResponse(
+        success: success ?? this.success,
+        message: message ?? this.message,
+        data: data ?? this.data,
+      );
 
-    factory ForgotPasswordResponse.fromJson(Map<String, dynamic> json) => ForgotPasswordResponse(
-        success: json["success"],
-        message: json["message"],
-        data: ForgotPasswordData.fromJson(json["data"]),
+  factory ForgotPasswordResponse.fromJson(Map<String, dynamic> json) {
+    return ForgotPasswordResponse(
+      success: json["success"] ?? false,
+      message: json["message"] ?? "",
+      data: json["data"] != null
+          ? ForgotPasswordData.fromJson(json["data"])
+          : null,
     );
+  }
 
-    Map<String, dynamic> toJson() => {
+  Map<String, dynamic> toJson() => {
         "success": success,
         "message": message,
-        "data": data.toJson(),
-    };
+        if (data != null) "data": data!.toJson(),
+      };
 }
 
 class ForgotPasswordData {

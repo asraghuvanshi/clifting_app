@@ -2,6 +2,7 @@ import 'package:clifting_app/core/providers/auth_repository_provider.dart';
 import 'package:clifting_app/core/ui/app_snackbar.dart';
 import 'package:clifting_app/presentation/features/auth/data/model/forget_password_model.dart';
 import 'package:clifting_app/presentation/features/auth/presentation/screen/auth_screens/forget_password_screen.dart';
+import 'package:clifting_app/presentation/widgets/button_widget/gradient_button.dart';
 import 'package:clifting_app/utility/colors.dart';
 import 'package:clifting_app/utility/validator.dart';
 import 'package:flutter/material.dart';
@@ -62,7 +63,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       // Handle successful login
       if (response.success == true) {
         // Navigate to home screen or dashboard
-        showAppSnackBar(context, response.message ?? "Login Successful!!", isError: false);
+        showAppSnackBar(
+          context,
+          response.message ?? "Login Successful!!",
+          isError: false,
+        );
       } else {
         setState(() {
           _errorMessage = response.message ?? 'Login failed. Please try again.';
@@ -86,7 +91,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return 'Connection timeout. Please check your internet.';
     } else if (error.toString().contains('No address associated')) {
       return 'No internet connection.';
-    } else if (error.toString().contains('401') || error.toString().contains('403')) {
+    } else if (error.toString().contains('401') ||
+        error.toString().contains('403')) {
       return 'Invalid email or password.';
     } else if (error.toString().contains('500')) {
       return 'Server error. Please try again later.';
@@ -94,15 +100,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return 'Login failed. Please try again.';
   }
 
-
-
   void _onForgotPassword() {
     HapticFeedback.lightImpact();
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const ForgotPasswordScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
     );
   }
 
@@ -153,7 +155,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       const SizedBox(height: 40),
 
                       // Login Button
-                      _buildLoginButton(),
+                      PrimaryGradientButton(
+                        title: "Login",
+                        icon: Icons.arrow_forward_rounded,
+                        isLoading: _isLoading,
+                        onTap: _handleLogin,
+                        gradientColors: [
+                          AppColors.cyberBlue,
+                          AppColors.electricGold,
+                        ],
+                      ),
                       const SizedBox(height: 40),
 
                       // Divider
@@ -205,14 +216,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     letterSpacing: 2,
                     color: Colors.white,
                     shadows: [
-                      Shadow(
-                        color: AppColors.cyberBlue,
-                        blurRadius: 15,
-                      ),
-                      Shadow(
-                        color: AppColors.electricGold,
-                        blurRadius: 25,
-                      ),
+                      Shadow(color: AppColors.cyberBlue, blurRadius: 15),
+                      Shadow(color: AppColors.electricGold, blurRadius: 25),
                     ],
                   ),
                 ),
@@ -250,10 +255,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           Expanded(
             child: Text(
               _errorMessage!,
-              style: TextStyle(
-                color: Colors.red.shade200,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Colors.red.shade200, fontSize: 14),
             ),
           ),
         ],
@@ -297,7 +299,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: GestureDetector(
                 onTap: _onForgotPassword,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   child: Text(
                     "Forgot Password?",
                     style: TextStyle(
@@ -434,13 +439,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         isCollapsed: true,
                         errorStyle: const TextStyle(height: 0),
                       ),
-                      textInputAction:
-                          isPassword ? TextInputAction.done : TextInputAction.next,
+                      textInputAction: isPassword
+                          ? TextInputAction.done
+                          : TextInputAction.next,
                       onFieldSubmitted: (_) {
                         if (isPassword) {
                           _handleLogin();
                         } else {
-                          FocusScope.of(context).requestFocus(_passwordFocusNode);
+                          FocusScope.of(
+                            context,
+                          ).requestFocus(_passwordFocusNode);
                         }
                       },
                     ),
@@ -481,70 +489,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildLoginButton() {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(28),
-        onTap: _isLoading ? null : _handleLogin,
-        splashColor: Colors.white.withOpacity(0.2),
-        highlightColor: Colors.white.withOpacity(0.1),
-        child: Container(
-          height: 56,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
-            gradient: LinearGradient(
-              colors: _isLoading
-                  ? [Colors.grey.shade700, Colors.grey.shade900]
-                  : [AppColors.cyberBlue, AppColors.electricGold],
-            ),
-            boxShadow: _isLoading
-                ? null
-                : [
-                    BoxShadow(
-                      color: AppColors.cyberBlue.withOpacity(0.4),
-                      blurRadius: 20,
-                      spreadRadius: 2,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-          ),
-          child: Center(
-            child: _isLoading
-                ? const SizedBox(
-                    height: 24,
-                    width: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 3,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        "LOGIN",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Icon(
-                        Icons.arrow_forward_rounded,
-                        color: Colors.white,
-                        size: 22,
-                      ),
-                    ],
-                  ),
-          ),
-        ),
-      ),
     );
   }
 
@@ -657,7 +601,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 // );
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 child: Text(
                   "Sign Up",
                   style: TextStyle(
@@ -728,6 +675,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 }
+
 class AnimatedLogo extends StatefulWidget {
   final bool isLoading;
 
@@ -795,10 +743,7 @@ class _AnimatedLogoState extends State<AnimatedLogo>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
-                    colors: [
-                      AppColors.electricGold,
-                      AppColors.cyberBlue,
-                    ],
+                    colors: [AppColors.electricGold, AppColors.cyberBlue],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -827,10 +772,7 @@ class _AnimatedLogoState extends State<AnimatedLogo>
                           color: Colors.white,
                           size: 36,
                           shadows: [
-                            Shadow(
-                              color: Colors.black,
-                              blurRadius: 10,
-                            ),
+                            Shadow(color: Colors.black, blurRadius: 10),
                           ],
                         ),
                 ),

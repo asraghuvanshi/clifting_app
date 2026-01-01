@@ -1,9 +1,9 @@
-// lib/presentation/features/auth/data/auth_repository.dart
-
 import 'package:clifting_app/core/storage/token_storage.dart';
 import 'package:clifting_app/presentation/features/auth/data/auth_api.dart';
+import 'package:clifting_app/presentation/features/auth/data/model/change_password_response.dart';
 import 'package:clifting_app/presentation/features/auth/data/model/forget_password_model.dart';
 import 'package:clifting_app/presentation/features/auth/data/model/login_model.dart';
+import 'package:clifting_app/presentation/features/auth/data/model/verify_reset_password_otp.dart';
 
 class AuthRepository {
   final AuthApi _api;
@@ -42,17 +42,26 @@ class AuthRepository {
     }
   }
 
-  // If you have reset password with OTP
-  Future<Map<String, dynamic>> resetPasswordWithOTP(String email, String otp) async {
+  Future<VerifyResetOtpResponse> resetPasswordWithOTP(String email, String otp) async {
     try {
-      final response = await _api.resetPassword(email);
-      return response;
+      final response = await _api.verifyResetOtp(email, otp);
+      final verifyOtpResponse = VerifyResetOtpResponse.fromJson(response);
+      return verifyOtpResponse;
     } catch (e) {
-      throw Exception('Reset password failed: ${e.toString()}');
+      throw Exception('Failed to verify otp: ${e.toString()}');
     }
   }
 
-
+  //  Reset Password Api
+  Future<ChangePasswordResponse> resetPassword(String token ,String password) async {
+    try {
+      final response = await _api.resetPassword(token,password);
+      final changePasswordResponse = ChangePasswordResponse.fromJson(response);
+      return changePasswordResponse;
+    } catch (e) {
+      throw Exception('Failed to Reset Password: ${e.toString()}');
+    }
+  }
 
   Future<void> logout() async {
     try {

@@ -1,6 +1,6 @@
 // lib/presentation/features/auth/providers/forget_password_provider.dart
 
-import 'package:clifting_app/presentation/features/auth/provider/forget_password_state.dart';
+import 'package:clifting_app/presentation/features/auth/states/forget_password_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:clifting_app/core/providers/auth_repository_provider.dart';
 import 'package:clifting_app/presentation/features/auth/data/auth_repository.dart';

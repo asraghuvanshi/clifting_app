@@ -12,7 +12,6 @@ class AppColors {
   static const Color spaceBlack = Color(0xFF0A0A15);     // Space Black
   static const Color midnightBlue = Color(0xFF121230);   // Midnight Blue
 
-  // Add gradients using these colors
   static const LinearGradient onboardingGradient1 = LinearGradient(
     colors: [spaceBlack, neonPink],
     begin: Alignment.topLeft,

@@ -1,16 +1,16 @@
-class VerifyResetPasswordOtpResponse {
+class VerifyResetOtpResponse {
   final bool success;
   final String message;
   final ResetTokenData? data;
 
-  VerifyResetPasswordOtpResponse({
+  VerifyResetOtpResponse({
     required this.success,
     required this.message,
     this.data,
   });
 
-  factory VerifyResetPasswordOtpResponse.fromJson(Map<String, dynamic> json) {
-    return VerifyResetPasswordOtpResponse(
+  factory VerifyResetOtpResponse.fromJson(Map<String, dynamic> json) {
+    return VerifyResetOtpResponse(
       success: json['success'] as bool,
       message: json['message'] as String,
       data: json['data'] != null
