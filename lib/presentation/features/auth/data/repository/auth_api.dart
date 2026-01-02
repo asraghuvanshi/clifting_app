@@ -1,6 +1,5 @@
 import 'package:clifting_app/core/constants/api_constants.dart';
 import 'package:clifting_app/core/network/api_client.dart';
-import 'package:clifting_app/presentation/features/auth/data/model/login_model.dart';
 
 class AuthApi {
   final ApiClient _apiClient;
@@ -41,7 +40,7 @@ class AuthApi {
   Future<Map<String, dynamic>> verifyResetOtp(String email, String otp) async {
     try {
       final response = await _apiClient.post(
-        ApiConstants.forgetPassword,
+        ApiConstants.verifyResetOtp,
         data: {
           'email': email,
           'otp' : otp

@@ -1,26 +1,28 @@
-import 'package:clifting_app/presentation/features/auth/states/change_password_state.dart';
+// lib/presentation/features/auth/providers/forget_password_provider.dart
+
+import 'package:clifting_app/presentation/features/auth/states/forget_password_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:clifting_app/core/providers/auth_repository_provider.dart';
-import 'package:clifting_app/presentation/features/auth/data/auth_repository.dart';
+import 'package:clifting_app/presentation/features/auth/data/repository/auth_repository.dart';
 
-final changePasswordProvider = StateNotifierProvider<ChangePasswordNotifier, ChangePasswordState>(
+final forgetPasswordProvider = StateNotifierProvider<ForgetPasswordNotifier, ForgetPasswordState>(
   (ref) {
     final authRepository = ref.read(authRepositoryProvider);
-    return ChangePasswordNotifier(authRepository);
+    return ForgetPasswordNotifier(authRepository);
   },
 );
 
-class ChangePasswordNotifier extends StateNotifier<ChangePasswordState> {
+class ForgetPasswordNotifier extends StateNotifier<ForgetPasswordState> {
   final AuthRepository _authRepository;
 
-  ChangePasswordNotifier(this._authRepository) : super(const ChangePasswordState());
+  ForgetPasswordNotifier(this._authRepository) : super(const ForgetPasswordState());
 
-  Future<void> changePassword(String token, String newPassword) async {
+  Future<void> forgetPassword(String email) async {
     try {
       // Start loading
       state = state.copyWith(isLoading: true, error: null, data: null);
 
-      final response = await _authRepository.resetPassword(token, newPassword);
+      final response = await _authRepository.forgetPassword(email);
 
       if (response.success) {
         // Success
@@ -54,6 +56,6 @@ class ChangePasswordNotifier extends StateNotifier<ChangePasswordState> {
   }
 
   void clearData() {
-    state = const ChangePasswordState();
+    state = const ForgetPasswordState();
   }
 }

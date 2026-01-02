@@ -2,7 +2,7 @@ import 'package:clifting_app/core/providers/auth_repository_provider.dart';
 import 'package:clifting_app/presentation/features/auth/states/auth_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:clifting_app/core/router/app_navigator.dart';
-import 'package:clifting_app/presentation/features/auth/data/auth_repository.dart';
+import 'package:clifting_app/presentation/features/auth/data/repository/auth_repository.dart';
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>(
   (ref) {

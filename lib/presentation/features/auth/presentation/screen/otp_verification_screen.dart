@@ -1,8 +1,6 @@
 import 'package:clifting_app/core/ui/app_snackbar.dart';
-import 'package:clifting_app/core/utils/time_parser.dart';
 import 'package:clifting_app/presentation/features/auth/presentation/screen/auth_screens/change_password.dart';
-import 'package:clifting_app/presentation/features/auth/states/verify_reset_otp_state.dart';
-import 'package:clifting_app/presentation/features/auth/viewmodels/reset_otp_provider.dart';
+import 'package:clifting_app/presentation/features/auth/providers/reset_otp_provider.dart';
 import 'package:clifting_app/utility/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

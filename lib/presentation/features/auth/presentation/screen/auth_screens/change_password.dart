@@ -1,5 +1,5 @@
 import 'package:clifting_app/core/ui/app_snackbar.dart';
-import 'package:clifting_app/presentation/features/auth/viewmodels/change_password_provider.dart';
+import 'package:clifting_app/presentation/features/auth/providers/change_password_provider.dart';
 import 'package:clifting_app/utility/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

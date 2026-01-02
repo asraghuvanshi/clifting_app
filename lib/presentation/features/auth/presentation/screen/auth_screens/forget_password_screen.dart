@@ -1,5 +1,5 @@
 import 'package:clifting_app/presentation/features/auth/presentation/screen/otp_verification_screen.dart';
-import 'package:clifting_app/presentation/features/auth/viewmodels/forget_password_provider.dart';
+import 'package:clifting_app/presentation/features/auth/providers/forget_password_provider.dart';
 import 'package:clifting_app/presentation/widgets/button_widget/gradient_button.dart';
 import 'package:clifting_app/utility/colors.dart';
 import 'package:flutter/material.dart';
