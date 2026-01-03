@@ -1,10 +1,11 @@
 abstract class ApiConstants {
-  static const String baseUrl = 'http://10.30.123.191:8080/api';
+  static const String baseUrl = 'http://10.43.211.191:8080/api';
 
   static const String login = '/auth/login';
   static const String forgetPassword = "/auth/forgot-password";
   static const String verifyResetOtp = "/auth/verify-reset-otp";
   static const String resetPassword = '/auth/reset-password';
+  static const String userProfile = '/api/user/profile';
 
   static const String refreshToken = '/auth/refresh';
   static const String logout = '/auth/logout';

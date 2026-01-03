@@ -1,6 +1,6 @@
 import 'package:clifting_app/presentation/features/auth/states/change_password_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:clifting_app/core/providers/auth_repository_provider.dart';
+import 'package:clifting_app/presentation/features/auth/providers/auth_repository_provider.dart';
 import 'package:clifting_app/presentation/features/auth/data/repository/auth_repository.dart';
 
 final changePasswordProvider = StateNotifierProvider<ChangePasswordNotifier, ChangePasswordState>(

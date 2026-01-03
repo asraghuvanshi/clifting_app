@@ -1,4 +1,4 @@
-import 'package:clifting_app/core/providers/auth_repository_provider.dart';
+import 'package:clifting_app/presentation/features/auth/providers/auth_repository_provider.dart';
 import 'package:clifting_app/core/ui/app_snackbar.dart';
 import 'package:clifting_app/presentation/features/auth/data/model/forget_password_model.dart';
 import 'package:clifting_app/presentation/features/auth/presentation/screen/auth_screens/forget_password_screen.dart';
